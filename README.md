@@ -77,7 +77,7 @@ All settings are in *Configure Settings → Module Settings → PF2E Third Actio
 
 ## Works with Recall Knowledge Assistant
 
-If [PF2e Recall Knowledge Assistant](https://github.com/gvach11/pf2e-recall-knowledge-assistant) 0.2.0 or later is active:
+If [PF2e Recall Knowledge Assistant](https://github.com/gvach11/pf2e-recall-knowledge-assistant) 1.0.0 or later is active:
 
 - On a character's turn, the Recall Knowledge **dice button** opens its guided dialog for that character. Target the enemy first with Foundry's Target tool.
 - Recall Knowledge is only suggested while at least one enemy you can see within 30 ft is still worth an attempt: the character hasn't failed against it this encounter, and still has something left to learn about it.

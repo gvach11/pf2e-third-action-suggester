@@ -37,6 +37,10 @@
       {
         "id": "pf2e-recall-knowledge-assistant",
         "type": "module",
+        "manifest": "https://raw.githubusercontent.com/gvach11/pf2e-recall-knowledge-assistant/master/module.json",
+        "compatibility": {
+          "minimum": "1.0.0"
+        },
         "reason": "Opens a guided Recall Knowledge roll from the suggestion and hides it when there's nothing left to learn."
       }
     ]
