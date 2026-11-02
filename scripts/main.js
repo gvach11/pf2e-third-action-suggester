@@ -2,6 +2,8 @@
  * PF2E Third Action Suggester - main.js
  */
 
+import { canRouteToRka, hasWorthwhileRecallTarget, openRecallKnowledge } from './integrations/rka.js';
+
 let _activePanel = null;
 
 Hooks.once('init', () => {
@@ -235,6 +237,10 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
       return;
     }
 
+    // With Recall Knowledge Assistant active, a character's Recall Knowledge
+    // opens its dialog; otherwise it falls through to the chat reminder.
+    if (slug === 'recall-knowledge' && openRecallKnowledge(this.actor)) return;
+
     // Some actions can't be rolled programmatically — post a chat reminder instead.
     if (CHAT_ACTIONS[slug]) {
       const entry = CHAT_ACTIONS[slug];
@@ -353,6 +359,7 @@ function readBattlefieldContext(actor) {
     hasAdjacentEnemy:        false,
     adjacentEnemyCount:      0,
     hasNearbyEnemy:          false,
+    hasWorthwhileRecallTarget: false,
     hasAdjacentAlly:         false,
     hasInjuredAlly:          false,
     isGrabbed:               false,
@@ -418,6 +425,7 @@ function readBattlefieldContext(actor) {
       hasAdjacentEnemy:        adjacentEnemies.length > 0,
       adjacentEnemyCount:      adjacentEnemies.length,
       hasNearbyEnemy:          nearbyEnemies.length > 0,
+      hasWorthwhileRecallTarget: hasWorthwhileRecallTarget(actor, nearbyEnemies),
       hasAdjacentAlly:         allies.some(t => measureFeet(t) <= 5),
       hasInjuredAlly,
       isGrabbed,
@@ -473,7 +481,7 @@ function getSuggestions(actor) {
           priority:      scorePriority(rule, profile),
           slug,
           needsTarget:   !NO_TARGET_ACTIONS.has(slug),
-          isChatOnly:    slug in CHAT_ACTIONS,
+          isChatOnly:    slug in CHAT_ACTIONS && !(slug === 'recall-knowledge' && canRouteToRka(actor)),
           category:      rule.category      ?? '',
           categoryIcon:  catCfg.icon        ?? '',
           categoryColor: catCfg.color       ?? '',
@@ -713,7 +721,7 @@ const RULES = [
     name: 'Recall Knowledge', actions: 1, priority: 5, category: 'knowledge', skillReq: 2,
     source: 'https://2e.aonprd.com/Actions.aspx?ID=26',
     condition: p =>
-      p.hasNearbyEnemy &&
+      p.hasWorthwhileRecallTarget &&
       ['arcana','nature','occultism','religion','society','crafting'].some(s => (p.skills[s]?.rank ?? 0) >= 2),
     why: () =>
       "Expert knowledge skills - identifying a creature's weakness or immunity can change the encounter strategy entirely."
