@@ -295,16 +295,6 @@ function readProfile(actor) {
       .map(i => i.system?.slug ?? slugify(i.name))
   );
 
-  const weapons = actor.items
-    .filter(i => i.type === 'weapon' && i.isEquipped)
-    .map(i => ({
-      slug: i.system?.slug,
-      traits: i.system?.traits?.value ?? [],
-      category: i.system?.category,
-      group: i.system?.group,
-      isAgile: (i.system?.traits?.value ?? []).includes('agile')
-    }));
-
   const isItemEquipped = (i) => {
     if (i.isEquipped) return true;
     const ct = i.system?.equipped?.carryType;
@@ -335,7 +325,6 @@ function readProfile(actor) {
     abilities,
     skills,
     featSlugs,
-    weapons,
     hasShield,
     hasFreeHand,
     hpPercent,
@@ -393,11 +382,22 @@ function readBattlefieldContext(actor) {
       } catch { return Infinity; }
     };
 
-    const adjacent = (t) => measureFeet(t) <= 5;
-    const nearby   = (t) => measureFeet(t) <= 30;
-
-    const adjacentEnemies = enemies.filter(adjacent);
-    const nearbyEnemies   = enemies.filter(nearby);
+    // Measure each enemy's distance and read its conditions once, then bucket.
+    const adjacentEnemies = [];
+    const nearbyEnemies   = [];
+    const adjC = [];
+    const nearC = [];
+    for (const t of enemies) {
+      const dist = measureFeet(t);
+      if (dist > 30) continue;
+      const conditions = readConditions(t.actor);
+      nearbyEnemies.push(t);
+      nearC.push(conditions);
+      if (dist <= 5) {
+        adjacentEnemies.push(t);
+        adjC.push(conditions);
+      }
+    }
 
     const hasInjuredAlly = allies.some(t => {
       const hp = t.actor.system?.attributes?.hp;
@@ -407,9 +407,6 @@ function readBattlefieldContext(actor) {
     const { slugs: actorSlugs } = readConditions(actor);
     const isRestrained = actorSlugs.has('restrained');
     const isGrabbed    = actorSlugs.has('grabbed') || isRestrained;
-
-    const adjC  = adjacentEnemies.map(t => readConditions(t.actor));
-    const nearC = nearbyEnemies.map(t => readConditions(t.actor));
 
     const hasFeintableEnemy       = adjC.length  === 0 ? false : adjC.some(c => !c.slugs.has('off-guard'));
     const hasDemoralizableEnemy   = nearC.length === 0 ? false : nearC.some(c => (c.values['frightened'] ?? 0) < 4);
@@ -421,7 +418,7 @@ function readBattlefieldContext(actor) {
       hasAdjacentEnemy:        adjacentEnemies.length > 0,
       adjacentEnemyCount:      adjacentEnemies.length,
       hasNearbyEnemy:          nearbyEnemies.length > 0,
-      hasAdjacentAlly:         allies.some(adjacent),
+      hasAdjacentAlly:         allies.some(t => measureFeet(t) <= 5),
       hasInjuredAlly,
       isGrabbed,
       isRestrained,
@@ -461,7 +458,6 @@ function getSuggestions(actor) {
       if (rule.condition(profile)) {
         const slug = slugify(rule.name);
         const catCfg = CATEGORY_CONFIG[rule.category] ?? {};
-        const RANKS  = ['Untrained', 'Trained', 'Expert', 'Master', 'Legendary'];
         let skillLabel = '';
         if (rule.skill) {
           const sk = profile.skills[rule.skill];
@@ -510,13 +506,14 @@ function scorePriority(rule, profile) {
 function signed(n = 0)  { return n >= 0 ? `+${n}` : `${n}`; }
 function slugify(str)   { return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
 
+const RANKS = ['Untrained', 'Trained', 'Expert', 'Master', 'Legendary'];
+
 // ===============================================================
 // TARGET REQUIREMENTS
 // ===============================================================
 
-// Extra options required by specific PF2E system actions.
-// 'distracting-words' is the Auditory variant of Create a Diversion (works when Restrained).
-// Extra options required by specific PF2E actions (overridable per-roll).
+// Extra options required by specific PF2E system actions (overridable per-roll).
+// Empty for now; kept as an extension point for actions that need preset args.
 const ACTION_OPTIONS = {};
 
 // Actions that can't be rolled programmatically — clicking the button posts a
