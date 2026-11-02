@@ -151,7 +151,7 @@ describe('hasWorthwhileRecallTarget fallback (1.0.0 behaviour)', () => {
   it('falls back and warns when RKA throws', () => {
     const api = currentApi({ getAttemptStatus: vi.fn(() => { throw new Error('boom'); }) });
     stubRka({ active: true, api });
-    expect(hasWorthwhileRecallTarget(pc, [{}])).toBe(true);
+    expect(hasWorthwhileRecallTarget(pc, [{ visible: true }])).toBe(true);
     expect(warnSpy).toHaveBeenCalled();
   });
 });
