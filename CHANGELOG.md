@@ -4,6 +4,20 @@ All notable changes to **PF2E Third Action Suggester** are documented here.
 
 ---
 
+## [1.1.0] — 2026-11-02
+
+### Recall Knowledge Assistant integration
+- With PF2e Recall Knowledge Assistant 0.2.0+ active, a character's Recall Knowledge button opens its guided dialog (dice icon instead of info)
+- Recall Knowledge is only suggested while a nearby enemy is still worth an attempt (not failed against this encounter, something left to learn)
+- NPC turns and worlds without Recall Knowledge Assistant keep the 1.0.0 behaviour
+- Recall Knowledge Assistant is listed as a recommended module
+
+### Internal
+- Nearby enemies' distance and conditions are read in one pass
+- Added an automated test suite (vitest) for the integration
+
+---
+
 ## [1.0.0] — 2026-06-08
 
 Initial public release.

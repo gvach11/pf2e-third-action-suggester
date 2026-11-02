@@ -40,7 +40,7 @@ Search for *PF2E Third Action Suggester* and click Install.
 **Manual installation:**
 Paste the manifest URL into Foundry's *Install Module* dialog:
 ```
-https://raw.githubusercontent.com/gvach11/pf2e-third-action/main/module.json
+https://raw.githubusercontent.com/gvach11/pf2e-third-action-suggester/main/module.json
 ```
 
 ---
@@ -52,7 +52,7 @@ https://raw.githubusercontent.com/gvach11/pf2e-third-action/main/module.json
 3. When a turn begins for a character you own (or any combatant if you are the GM), the suggestion panel appears automatically in the lower-right of the screen.
 4. Click the collapsed row to expand the suggestions.
 5. Click the **dice button** on any card to roll that action directly.
-6. Click the **⊕ icon** on Recall Knowledge or Aid to post a chat reminder (whispered to you only).
+6. Click the **ⓘ icon** on Recall Knowledge or Aid to post a chat reminder (whispered to you only). With Recall Knowledge Assistant installed, Recall Knowledge gets a dice button instead (see below).
 7. Drag the panel to reposition it — its location is remembered.
 
 **Keyboard shortcut:** `Alt+Shift+S` toggles the panel open/closed during combat. Rebind it in *Configure Controls → Modules*.
@@ -75,11 +75,23 @@ All settings are in *Configure Settings → Module Settings → PF2E Third Actio
 
 ---
 
+## Works with Recall Knowledge Assistant
+
+If [PF2e Recall Knowledge Assistant](https://github.com/gvach11/pf2e-recall-knowledge-assistant) 0.2.0 or later is active:
+
+- On a character's turn, the Recall Knowledge **dice button** opens its guided dialog for that character. Target the enemy first with Foundry's Target tool.
+- Recall Knowledge is only suggested while at least one enemy within 30 ft is still worth an attempt: the character hasn't failed against it this encounter, and still has something left to learn about it.
+
+On an NPC's turn, or without Recall Knowledge Assistant, Recall Knowledge works as before: a whispered chat reminder, suggested whenever an enemy is within 30 ft.
+
+---
+
 ## Compatibility
 
 | Module | Status |
 |---|---|
 | PF2E system | Required |
+| PF2e Recall Knowledge Assistant | Recommended (integrates; Foundry v14) |
 | PF2E Workbench | Compatible |
 | PF2E Toolbelt | Compatible |
 | PF2E Dorako UI | Compatible |
