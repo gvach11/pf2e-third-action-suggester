@@ -19,9 +19,9 @@ function currentApi(overrides = {}) {
   return { apiVersion: 1, openDialog: vi.fn(), getAttemptStatus: vi.fn(() => 'available'), ...overrides };
 }
 
-// One token per status; getAttemptStatus answers with that token's status.
+// One visible token per status; getAttemptStatus answers with that token's status.
 function tokensWithStatuses(api, statuses) {
-  const tokens = statuses.map(status => ({ status }));
+  const tokens = statuses.map(status => ({ status, visible: true }));
   api.getAttemptStatus.mockImplementation(({ targetToken }) => targetToken.status);
   return tokens;
 }
@@ -108,6 +108,19 @@ describe('hasWorthwhileRecallTarget with RKA', () => {
 
   it('is false with no nearby enemies', () => {
     expect(hasWorthwhileRecallTarget(pc, [])).toBe(false);
+  });
+
+  it("ignores enemies this user can't see, so a hidden one can't keep the suggestion alive", () => {
+    const [seen, hidden] = tokensWithStatuses(api, ['exhausted', 'available']);
+    hidden.visible = false;
+    expect(hasWorthwhileRecallTarget(pc, [seen, hidden])).toBe(false);
+  });
+
+  it('still counts a visible available enemy next to a hidden one', () => {
+    const [hidden, seen] = tokensWithStatuses(api, ['available', 'available']);
+    hidden.visible = false;
+    expect(hasWorthwhileRecallTarget(pc, [hidden, seen])).toBe(true);
+    expect(api.getAttemptStatus).not.toHaveBeenCalledWith({ actor: pc, targetToken: hidden });
   });
 
   it('asks about each enemy for this actor', () => {

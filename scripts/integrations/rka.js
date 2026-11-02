@@ -24,12 +24,16 @@ export function canRouteToRka(actor) {
 }
 
 // Is there a nearby enemy this actor would still learn something from?
+// Only enemies this user can see count: a hidden one would otherwise keep
+// the suggestion alive and give itself away (a GM sees hidden tokens).
 export function hasWorthwhileRecallTarget(actor, nearbyEnemyTokens) {
   const anyNearby = nearbyEnemyTokens.length > 0;
   if (!canRouteToRka(actor)) return anyNearby;
   try {
     const api = getRkaApi();
-    return nearbyEnemyTokens.some(targetToken => api.getAttemptStatus({ actor, targetToken }) === 'available');
+    return nearbyEnemyTokens
+      .filter(targetToken => targetToken.visible)
+      .some(targetToken => api.getAttemptStatus({ actor, targetToken }) === 'available');
   } catch (e) {
     console.warn('PF2E Third Action | Recall Knowledge Assistant status check failed:', e);
     return anyNearby;
