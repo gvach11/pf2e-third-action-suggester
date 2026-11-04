@@ -4,6 +4,13 @@ All notable changes to **PF2E Third Action Suggester** are documented here.
 
 ---
 
+## [1.1.1] — 2026-11-04
+
+### Fixed
+- Installing on Foundry v13 no longer offers Recall Knowledge Assistant, which needs Foundry v14. The integration still works the same whenever Recall Knowledge Assistant is installed and active.
+
+---
+
 ## [1.1.0] — 2026-11-02
 
 ### Recall Knowledge Assistant integration

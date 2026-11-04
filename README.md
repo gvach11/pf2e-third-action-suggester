@@ -91,7 +91,7 @@ On an NPC's turn, or without Recall Knowledge Assistant, Recall Knowledge works 
 | Module | Status |
 |---|---|
 | PF2E system | Required |
-| PF2e Recall Knowledge Assistant | Recommended (integrates; Foundry v14) |
+| PF2e Recall Knowledge Assistant | Optional (integrates; Foundry v14) |
 | PF2E Workbench | Compatible |
 | PF2E Toolbelt | Compatible |
 | PF2E Dorako UI | Compatible |
