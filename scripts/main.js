@@ -6,12 +6,16 @@ import { canRouteToRka, hasWorthwhileRecallTarget, openRecallKnowledge } from '.
 import { rollSystemAction } from './actions/roll-action.js';
 import { expandedHeight, fitTop } from './ui/panel-geometry.js';
 import { debounce, isRelevantTokenChange, isStaleTurn, turnKey } from './ui/refresh.js';
+import { countAttacksSince, mapStepFor } from './ui/map-tracker.js';
 import { buildSuggestions } from './suggestions/engine.js';
 import { CHAT_ACTIONS } from './suggestions/rules.js';
 import { readActorProfile } from './profile/actor-profile.js';
 import { assessBattlefield, tokenFacts } from './profile/battlefield.js';
 
 let _activePanel = null;
+// When the current turn began, as TAS saw it. Panels opened in a turn TAS did
+// not see start (reload, keybind) have no reliable count and show no MAP hint.
+let _turnStart = null;
 
 Hooks.once('init', () => {
   // ── Action category toggles ─────────────────────────────────────────────────
@@ -106,6 +110,7 @@ Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
   const actor = combatant?.actor;
   if (!actor) return;
   if (!game.user.isGM && !actor.isOwner) return;
+  _turnStart = { key: turnKey(combat), at: Date.now() };
   if (_activePanel) { _activePanel.close(); _activePanel = null; }
   if (!game.settings.get('pf2e-third-action-suggester', 'autoTrigger')) return;
   const suggestions = getSuggestions(actor);
@@ -145,6 +150,11 @@ Hooks.on('updateActor', (_actor, changed) => {
 });
 Hooks.on('updateCombatant', (_combatant, changed) => {
   if ('defeated' in changed) refreshIfCurrent();
+});
+// A new attack roll changes which MAP button is suggested; only classes and
+// tooltips change, so no re-render.
+Hooks.on('createChatMessage', () => {
+  if (_activePanel?.rendered) _activePanel._applyMapHighlight();
 });
 
 // ===============================================================
@@ -262,11 +272,34 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
       });
     });
 
+    this._applyMapHighlight();
+
     // Variant sub-menu (Create a Diversion)
     this.element.querySelectorAll('.third-action-variant-list li').forEach(li => {
       li.addEventListener('click', () => {
         li.closest('details').removeAttribute('open');
         this._rollAction(li.dataset.slug, false, { variant: li.dataset.variant });
+      });
+    });
+  }
+
+  // Marks the roll button for the MAP step that applies now. Only toggles
+  // classes and tooltips. Without a known turn start there is no highlight.
+  _applyMapHighlight() {
+    const el = this.element;
+    if (!el) return;
+    const known = !!_turnStart && _turnStart.key === this.turnKey;
+    const count = known
+      ? countAttacksSince(game.messages?.contents ?? [], { actorId: this.actor.id, since: _turnStart.at })
+      : 0;
+    const step = mapStepFor(count);
+    const prefix = `Suggested: you've made ${count} ${count === 1 ? 'attack' : 'attacks'} this turn.`;
+    el.querySelectorAll('.third-action-map-btn[data-map]').forEach(mapBtn => {
+      mapBtn.parentElement.querySelectorAll('.third-action-roll-btn[data-slug]').forEach(btn => {
+        if (btn.dataset.baseTitle === undefined) btn.dataset.baseTitle = btn.getAttribute('title') ?? '';
+        const suggested = known && (Number(btn.dataset.map) || 0) === step;
+        btn.classList.toggle('is-suggested-map', suggested);
+        btn.title = suggested ? `${prefix} ${btn.dataset.baseTitle}` : btn.dataset.baseTitle;
       });
     });
   }

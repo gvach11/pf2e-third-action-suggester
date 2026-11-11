@@ -313,3 +313,9 @@
   background: rgba(201, 168, 76, 0.1);
   color: var(--ta-gold);
 }
+
+/* The roll button matching the multiple attack penalty that applies now */
+.third-action-roll-btn.is-suggested-map {
+  border-color: var(--ta-gold);
+  color: var(--ta-gold);
+}
