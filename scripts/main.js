@@ -5,7 +5,7 @@
 import { canRouteToRka, hasWorthwhileRecallTarget, openRecallKnowledge } from './integrations/rka.js';
 import { rollSystemAction } from './actions/roll-action.js';
 import { expandedHeight, fitTop } from './ui/panel-geometry.js';
-import { debounce, isRelevantTokenChange, isStaleTurn, turnKey } from './ui/refresh.js';
+import { debounce, isRelevantTokenChange, isStaleTurn, panelSignature, turnKey } from './ui/refresh.js';
 import { countAttacksSince, mapButtonState, mapStepFor } from './ui/map-tracker.js';
 import { buildSuggestions } from './suggestions/engine.js';
 import { CHAT_ACTIONS } from './suggestions/rules.js';
@@ -149,7 +149,7 @@ const refreshIfCurrent = debounce(() => {
   const panel = _activePanel;
   if (!panel?.rendered) return;
   if (isStaleTurn(panel.turnKey, game.combats?.get(panel.combatId))) return;
-  panel.refresh();
+  panel.refresh().catch(e => console.warn('PF2E Third Action | refresh failed:', e));
 }, 250);
 
 Hooks.on('updateToken', (_token, changed) => {
@@ -217,7 +217,8 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     return `⚔️ ${this.actor.name} — ${n} suggestion${n !== 1 ? 's' : ''}`;
   }
 
-  async _prepareContext(_options) {
+  // `suggestions`, each with the targetIssue for the user's current target.
+  _withTargetIssues(suggestions) {
     // Target facts exist only with exactly one target and a token of our own.
     let target = null;
     let reach = 5;
@@ -230,9 +231,16 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     } catch (e) {
       console.warn('PF2E Third Action | Could not read the target:', e);
     }
+    return suggestions.map(s => ({ ...s, targetIssue: targetIssue(s.slug, target, { reach }) }));
+  }
+
+  async _prepareContext(_options) {
+    const shown = this._withTargetIssues(this.suggestions);
+    // What this render shows; refresh() skips re-rendering while it matches.
+    this._signature = panelSignature(this.title, shown);
     return {
-      suggestions: this.suggestions.map(s => ({
-        targetIssue:   targetIssue(s.slug, target, { reach }),
+      suggestions: shown.map(s => ({
+        targetIssue:   s.targetIssue,
         name:          s.name,
         diamonds:      '◆'.repeat(s.actions),
         why:           s.why,
@@ -360,10 +368,12 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     if (hint) hint.textContent = expanded ? 'Hide suggestions' : 'Show suggestions';
   }
 
-  // Recompute the suggestions for the current battlefield and re-render in
-  // place. Position, size and expanded state carry over, and so does the
-  // list's scroll, which the re-render would otherwise reset. Never closes
-  // the panel.
+  // Recompute the suggestions for the current battlefield and, if what the
+  // panel shows changed, re-render in place. An unchanged panel isn't
+  // re-rendered, so an open picker, focus, hover and a resize in progress
+  // survive. Position, size and expanded state carry over, and so do the
+  // list's scroll and an open variant picker, which the re-render would
+  // otherwise reset. Never closes the panel.
   async refresh() {
     try {
       this.suggestions = getSuggestions(this.actor);
@@ -371,10 +381,16 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
       console.warn('PF2E Third Action | Could not refresh suggestions:', e);
       return;
     }
+    const signature = panelSignature(this.title, this._withTargetIssues(this.suggestions));
+    if (signature === this._signature) return;
+    const openSlug = this.element?.querySelector('details[open][data-slug]')?.dataset.slug;
     const scrollTop = this.element?.querySelector('.third-action-suggestions')?.scrollTop ?? 0;
     await this.render();
     const list = this.element?.querySelector('.third-action-suggestions');
     if (list && scrollTop) list.scrollTop = scrollTop;
+    if (openSlug) {
+      this.element?.querySelector(`details[data-slug="${CSS.escape(openSlug)}"]`)?.setAttribute('open', '');
+    }
   }
 
   async maximize() {

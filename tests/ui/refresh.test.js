@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { debounce, isRelevantTokenChange, isStaleTurn, turnKey } from '../../scripts/ui/refresh.js';
+import { debounce, isRelevantTokenChange, isStaleTurn, panelSignature, turnKey } from '../../scripts/ui/refresh.js';
 
 describe('isRelevantTokenChange', () => {
   it('token moves are relevant, name changes are not', () => {
@@ -58,5 +58,45 @@ describe('isStaleTurn', () => {
 
   it('the current turn is not stale', () => {
     expect(isStaleTurn('c1:2:1', combat)).toBe(false);
+  });
+});
+
+describe('panelSignature', () => {
+  const list = () => [
+    { slug: 'trip', why: 'Knock it down.', skillLabel: 'Athletics: Trained', targetIssue: null, name: 'Trip' },
+    { slug: 'demoralize', why: 'Scare it.', skillLabel: '', targetIssue: null, name: 'Demoralize' },
+  ];
+
+  it('the same panel gives the same string', () => {
+    const sig = panelSignature('Valeros — 2 suggestions', list());
+    expect(typeof sig).toBe('string');
+    expect(panelSignature('Valeros — 2 suggestions', list())).toBe(sig);
+  });
+
+  it('a changed target issue changes it', () => {
+    const changed = list();
+    changed[0].targetIssue = 'Your target is already prone.';
+    expect(panelSignature('t', changed)).not.toBe(panelSignature('t', list()));
+  });
+
+  it('a changed title, why, skill label or order changes it', () => {
+    const base = panelSignature('t', list());
+    expect(panelSignature('u', list())).not.toBe(base);
+    const why = list(); why[1].why = 'Scare it more.';
+    expect(panelSignature('t', why)).not.toBe(base);
+    const label = list(); label[0].skillLabel = 'Athletics: Expert';
+    expect(panelSignature('t', label)).not.toBe(base);
+    expect(panelSignature('t', list().reverse())).not.toBe(base);
+  });
+
+  it('ignores fields the panel signature does not track', () => {
+    const renamed = list(); renamed[0].name = 'Other';
+    expect(panelSignature('t', renamed)).toBe(panelSignature('t', list()));
+  });
+
+  it('treats a missing target issue or skill label like an empty one', () => {
+    const bare = list().map(({ targetIssue, skillLabel, ...s }) => s);
+    const empty = list().map(s => ({ ...s, targetIssue: undefined, skillLabel: '' }));
+    expect(panelSignature('t', bare)).toBe(panelSignature('t', empty));
   });
 });

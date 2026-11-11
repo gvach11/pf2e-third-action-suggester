@@ -30,3 +30,16 @@ export function turnKey(combat) {
 export function isStaleTurn(panelKey, combat) {
   return !combat || turnKey(combat) !== panelKey;
 }
+
+/**
+ * What a panel shows, as a string: its title and, per suggestion, the slug,
+ * why, skill label and target issue. A refresh whose signature matches the
+ * last render skips re-rendering, which would close an open picker and drop
+ * focus and hover.
+ */
+export function panelSignature(title, suggestions) {
+  return JSON.stringify([
+    title,
+    (suggestions ?? []).map(s => [s.slug, s.why, s.skillLabel || '', s.targetIssue || null]),
+  ]);
+}
