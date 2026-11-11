@@ -191,8 +191,17 @@ const refreshIfCurrent = debounce(() => {
   panel.refresh().catch(e => console.warn('PF2E Third Action | refresh failed:', e));
 }, 250);
 
-Hooks.on('updateToken', (_token, changed) => {
-  if (isRelevantTokenChange(changed)) refreshIfCurrent();
+Hooks.on('updateToken', (tokenDoc, changed) => {
+  if (!isRelevantTokenChange(changed)) return;
+  refreshIfCurrent();
+  // With token vision off no sightRefresh follows the move, and the refresh
+  // above reads the token mid-animation. Refresh again once the animation
+  // ends. The animation may start after this hook in the same tick, so read
+  // the promise on the next tick (it is null when the token isn't moving).
+  if (!refreshWanted()) return;
+  setTimeout(() => {
+    tokenDoc.object?.movementAnimationPromise?.then(() => refreshIfCurrent()).catch(() => {});
+  }, 0);
 });
 // updateToken fires as a move starts, while a player's vision is still
 // catching up with the animation, so a refresh then can read `visible` from
