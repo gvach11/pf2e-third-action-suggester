@@ -197,9 +197,15 @@ Hooks.on('updateToken', (_token, changed) => {
 // catching up with the animation, so a refresh then can read `visible` from
 // midway. sightRefresh fires after each vision update, including when the
 // move ends; the trailing debounce makes the last refresh land after that.
-Hooks.on('sightRefresh', () => refreshIfCurrent());
+// sightRefresh and targetToken fire constantly, so they bail out early when
+// there is no panel to refresh and no pending turn to open. Only this user's
+// targets feed the panel's target warnings.
+const refreshWanted = () => !!_activePanel || !!_pendingTurn;
+Hooks.on('sightRefresh', () => { if (refreshWanted()) refreshIfCurrent(); });
 Hooks.on('createToken', () => refreshIfCurrent());
-Hooks.on('targetToken', () => refreshIfCurrent());
+Hooks.on('targetToken', user => {
+  if (user?.id === game.user.id && refreshWanted()) refreshIfCurrent();
+});
 Hooks.on('deleteToken', () => refreshIfCurrent());
 for (const hook of ['createItem', 'updateItem', 'deleteItem']) {
   Hooks.on(hook, item => {
