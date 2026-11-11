@@ -166,6 +166,12 @@ describe('rule gates', () => {
     expect(names(buildSuggestions(profile, allOn))).toContain('Recall Knowledge');
   });
 
+  it('Recall Knowledge is suggested for characters, not NPCs', () => {
+    const base = { hasWorthwhileRecallTarget: true, skills: { arcana: { rank: 1, mod: 5 } } };
+    expect(names(buildSuggestions(makeProfile({ ...base, actorType: 'character' }), allOn))).toContain('Recall Knowledge');
+    expect(names(buildSuggestions(makeProfile({ ...base, actorType: 'npc' }), allOn))).not.toContain('Recall Knowledge');
+  });
+
   it('Reposition text mentions a free hand only for characters', () => {
     const base = { ...nextToEnemy, abilities: { str: 4, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }, skills: { athletics: { rank: 1, mod: 7 } } };
     const npc = makeProfile({ ...base, actorType: 'npc', hasFreeHand: true, handsKnown: false });

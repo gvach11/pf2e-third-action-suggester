@@ -206,7 +206,9 @@ export const RULES = [
   {
     name: 'Recall Knowledge', actions: 1, priority: 5, category: 'knowledge', skillReq: 1,
     source: 'https://2e.aonprd.com/Actions.aspx?ID=26',
+    // Characters only: NPC knowledge skills are inferred (rank 1), so they would always qualify.
     condition: p =>
+      p.actorType === 'character' &&
       p.hasWorthwhileRecallTarget &&
       KNOWLEDGE_SKILLS.some(s => (p.skills[s]?.rank ?? 0) >= 1),
     why: () =>
