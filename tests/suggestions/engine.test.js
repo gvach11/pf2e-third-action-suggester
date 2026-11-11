@@ -67,3 +67,27 @@ describe('buildSuggestions', () => {
     expect(find({ routesRecallKnowledge: true }).isChatOnly).toBe(false);
   });
 });
+
+describe('buildSuggestions with NPC and incapacitated profiles', () => {
+  const npc = (extra = {}) => makeProfile({
+    ...nextToEnemy,
+    actorType: 'npc',
+    abilities: { str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    skills: { athletics: { rank: 1, mod: 12, rankKnown: false } },
+    ...extra,
+  });
+
+  it('NPC skill label shows the modifier, not a rank', () => {
+    const trip = buildSuggestions(npc(), allOn).find(s => s.name === 'Trip');
+    expect(trip.skillLabel).toBe('Athletics +12');
+  });
+
+  it('minRank does not filter skills with unknown rank', () => {
+    const out = buildSuggestions(npc(), { ...allOn, minRank: 2 });
+    expect(names(out)).toContain('Trip');
+  });
+
+  it('an incapacitated actor gets nothing', () => {
+    expect(buildSuggestions(npc({ isIncapacitated: true }), allOn)).toEqual([]);
+  });
+});

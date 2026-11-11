@@ -6,7 +6,8 @@ import { canRouteToRka, hasWorthwhileRecallTarget, openRecallKnowledge } from '.
 import { rollSystemAction } from './actions/roll-action.js';
 import { expandedHeight, fitTop } from './ui/panel-geometry.js';
 import { buildSuggestions } from './suggestions/engine.js';
-import { CHAT_ACTIONS, slugify } from './suggestions/rules.js';
+import { CHAT_ACTIONS } from './suggestions/rules.js';
+import { readActorProfile, readConditions } from './profile/actor-profile.js';
 
 let _activePanel = null;
 
@@ -329,79 +330,7 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
 // ===============================================================
 
 function readProfile(actor) {
-  const system = actor.system;
-
-  const abilities = {
-    str: system.abilities?.str?.mod ?? 0,
-    dex: system.abilities?.dex?.mod ?? 0,
-    con: system.abilities?.con?.mod ?? 0,
-    int: system.abilities?.int?.mod ?? 0,
-    wis: system.abilities?.wis?.mod ?? 0,
-    cha: system.abilities?.cha?.mod ?? 0
-  };
-
-  const skills = {};
-  for (const [key, skill] of Object.entries(system.skills ?? {})) {
-    skills[key] = { rank: skill.rank ?? 0, mod: skill.totalModifier ?? 0 };
-  }
-
-  const featSlugs = new Set(
-    actor.items
-      .filter(i => ['feat', 'feature', 'action'].includes(i.type))
-      .map(i => i.system?.slug ?? slugify(i.name))
-  );
-
-  const isItemEquipped = (i) => {
-    if (i.isEquipped) return true;
-    const ct = i.system?.equipped?.carryType;
-    if (ct === 'held' || ct === 'worn') return true;
-    if (i.system?.equipped?.value === true) return true;
-    if (i.system?.equipped?.inSlot === true) return true;
-    return false;
-  };
-
-  const hasShield = actor.items.some(i => {
-    const ok =
-      (i.type === 'armor'  && i.system?.category === 'shield') ||
-      (i.type === 'shield') ||
-      (i.type === 'weapon' && (i.system?.traits?.value ?? []).includes('shield'));
-    return ok && isItemEquipped(i);
-  });
-
-  // PF2E tracks handsFree as a computed integer (0,1,2). Default 1 if absent.
-  const hasFreeHand = (system.attributes?.handsFree ?? 1) >= 1;
-
-  const hpCurrent = system.attributes?.hp?.value ?? 1;
-  const hpMax     = system.attributes?.hp?.max   ?? 1;
-  const hpPercent = hpCurrent / hpMax;
-  const isLowHp   = hpPercent < 0.5;
-
-  return {
-    actorType: actor.type,
-    abilities,
-    skills,
-    featSlugs,
-    hasShield,
-    hasFreeHand,
-    hpPercent,
-    isLowHp,
-    ...readBattlefieldContext(actor)
-  };
-}
-
-function readConditions(actor) {
-  const slugs  = new Set();
-  const values = {};
-  try {
-    for (const c of (actor.itemTypes?.condition ?? [])) {
-      const slug = c.slug ?? c.system?.slug;
-      if (!slug) continue;
-      slugs.add(slug);
-      const val = c.system?.value?.value ?? c.value ?? null;
-      if (val !== null) values[slug] = val;
-    }
-  } catch { /* empty */ }
-  return { slugs, values };
+  return { ...readActorProfile(actor), ...readBattlefieldContext(actor) };
 }
 
 function readBattlefieldContext(actor) {
@@ -412,8 +341,6 @@ function readBattlefieldContext(actor) {
     hasWorthwhileRecallTarget: false,
     hasAdjacentAlly:         false,
     hasInjuredAlly:          false,
-    isGrabbed:               false,
-    isRestrained:            false,
     hasFeintableEnemy:       true,
     hasDemoralizableEnemy:   true,
     hasTrippableEnemy:       true,
@@ -461,10 +388,6 @@ function readBattlefieldContext(actor) {
       return hp && (hp.value / (hp.max || 1)) < 0.75;
     });
 
-    const { slugs: actorSlugs } = readConditions(actor);
-    const isRestrained = actorSlugs.has('restrained');
-    const isGrabbed    = actorSlugs.has('grabbed') || isRestrained;
-
     const hasFeintableEnemy       = adjC.length  === 0 ? false : adjC.some(c => !c.slugs.has('off-guard'));
     const hasDemoralizableEnemy   = nearC.length === 0 ? false : nearC.some(c => (c.values['frightened'] ?? 0) < 4);
     const hasTrippableEnemy       = adjC.length  === 0 ? false : adjC.some(c => !c.slugs.has('prone'));
@@ -478,8 +401,6 @@ function readBattlefieldContext(actor) {
       hasWorthwhileRecallTarget: hasWorthwhileRecallTarget(actor, nearbyEnemies),
       hasAdjacentAlly:         allies.some(t => measureFeet(t) <= 5),
       hasInjuredAlly,
-      isGrabbed,
-      isRestrained,
       hasFeintableEnemy,
       hasDemoralizableEnemy,
       hasTrippableEnemy,

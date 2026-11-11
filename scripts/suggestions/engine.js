@@ -7,18 +7,20 @@
 
 import { MAP_ACTIONS } from '../actions/roll-action.js';
 import {
-  CATEGORY_CONFIG, CHAT_ACTIONS, DIVERSION_VARIANTS, NO_TARGET_ACTIONS, RANKS, RULES, slugify,
+  CATEGORY_CONFIG, CHAT_ACTIONS, DIVERSION_VARIANTS, NO_TARGET_ACTIONS, RANKS, RULES, signed, slugify,
 } from './rules.js';
 
 export function buildSuggestions(profile, { minRank, isCategoryEnabled, routesRecallKnowledge }) {
   const results = [];
+  if (profile.isIncapacitated) return results;
   for (const rule of RULES) {
     // Category filter
     if (rule.category && !isCategoryEnabled(rule.category)) continue;
     // Minimum skill rank filter (only applies to actions with a skill requirement > 0)
     if (rule.skill && rule.skillReq > 0) {
-      const charRank = profile.skills[rule.skill]?.rank ?? 0;
-      if (charRank < minRank) continue;
+      const sk = profile.skills[rule.skill];
+      // A rank pf2e does not report (NPCs) cannot be filtered on.
+      if (sk?.rankKnown !== false && (sk?.rank ?? 0) < minRank) continue;
     }
     try {
       if (rule.condition(profile)) {
@@ -29,7 +31,9 @@ export function buildSuggestions(profile, { minRank, isCategoryEnabled, routesRe
           const sk = profile.skills[rule.skill];
           if (sk !== undefined) {
             const sName = rule.skill.charAt(0).toUpperCase() + rule.skill.slice(1);
-            skillLabel = `${sName} · ${RANKS[sk.rank] ?? 'Untrained'}`;
+            skillLabel = sk.rankKnown === false
+              ? `${sName} ${signed(sk.mod)}`
+              : `${sName} · ${RANKS[sk.rank] ?? 'Untrained'}`;
           }
         }
         results.push({
