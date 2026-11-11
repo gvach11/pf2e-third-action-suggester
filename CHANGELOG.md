@@ -4,6 +4,17 @@ All notable changes to **PF2E Third Action Suggester** are documented here.
 
 ---
 
+## [1.2.0] — 2026-11-11
+
+### Added
+- Trip, Shove, Grapple, Disarm, Reposition and Escape have **−5** and **−10** buttons next to the dice button, to roll them with the multiple attack penalty
+- The suggestion panel can be resized from its bottom-right corner; its size is remembered, including across encounters
+
+### Fixed
+- A long suggestion list no longer runs off screen: it scrolls, and the expanded panel moves up to stay on screen
+
+---
+
 ## [1.1.1] — 2026-11-04
 
 ### Fixed
