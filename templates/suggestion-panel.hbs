@@ -10,6 +10,10 @@
 
   {{!-- Suggestion list - hidden until player expands --}}
   <div class="third-action-suggestions" hidden>
+    {{#unless suggestions.length}}
+    {{!-- A mid-turn refresh can leave nothing to suggest; the panel stays open --}}
+    <p class="third-action-empty">No suggestions right now.</p>
+    {{else}}
     <div class="third-action-list">
       {{#each suggestions}}
       <div class="third-action-item" style="--ta-category-color: {{this.categoryColor}}">
@@ -87,6 +91,7 @@
       </div>
       {{/each}}
     </div>
+    {{/unless}}
   </div>
 
 </div>

@@ -5,6 +5,7 @@
 import { canRouteToRka, hasWorthwhileRecallTarget, openRecallKnowledge } from './integrations/rka.js';
 import { rollSystemAction } from './actions/roll-action.js';
 import { expandedHeight, fitTop } from './ui/panel-geometry.js';
+import { debounce, isRelevantTokenChange, isStaleTurn, turnKey } from './ui/refresh.js';
 import { buildSuggestions } from './suggestions/engine.js';
 import { CHAT_ACTIONS } from './suggestions/rules.js';
 import { readActorProfile } from './profile/actor-profile.js';
@@ -69,7 +70,7 @@ Hooks.once('init', () => {
       } else {
         const suggestions = getSuggestions(actor);
         if (suggestions.length === 0) return false;
-        _activePanel = new ThirdActionPanel(actor, suggestions);
+        _activePanel = new ThirdActionPanel(actor, suggestions, game.combat);
         _activePanel.render(true);
       }
       return true;
@@ -89,7 +90,7 @@ Hooks.once('ready', () => {
   if (!game.user.isGM && !actor.isOwner) return;
   const suggestions = getSuggestions(actor);
   if (suggestions.length === 0) return;
-  _activePanel = new ThirdActionPanel(actor, suggestions);
+  _activePanel = new ThirdActionPanel(actor, suggestions, combat);
   _activePanel.render(true);
 });
 
@@ -109,8 +110,36 @@ Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
   if (!game.settings.get('pf2e-third-action-suggester', 'autoTrigger')) return;
   const suggestions = getSuggestions(actor);
   if (suggestions.length === 0) return;
-  _activePanel = new ThirdActionPanel(actor, suggestions);
+  _activePanel = new ThirdActionPanel(actor, suggestions, combat);
   _activePanel.render(true);
+});
+
+// ── Mid-turn refresh ────────────────────────────────────────────────
+// Players usually move before their third action, so the panel recomputes
+// whenever the battlefield changes. Every hook just pokes the debounced
+// refresh, which does nothing unless the open panel's turn is still on.
+const refreshIfCurrent = debounce(() => {
+  const panel = _activePanel;
+  if (!panel?.rendered) return;
+  if (isStaleTurn(panel.turnKey, game.combats?.get(panel.combatId))) return;
+  panel.refresh();
+}, 250);
+
+Hooks.on('updateToken', (_token, changed) => {
+  if (isRelevantTokenChange(changed)) refreshIfCurrent();
+});
+Hooks.on('createToken', () => refreshIfCurrent());
+Hooks.on('deleteToken', () => refreshIfCurrent());
+for (const hook of ['createItem', 'updateItem', 'deleteItem']) {
+  Hooks.on(hook, item => {
+    if (item?.type === 'condition') refreshIfCurrent();
+  });
+}
+Hooks.on('updateActor', (_actor, changed) => {
+  if (foundry.utils.hasProperty(changed, 'system.attributes.hp')) refreshIfCurrent();
+});
+Hooks.on('updateCombatant', (_combatant, changed) => {
+  if ('defeated' in changed) refreshIfCurrent();
 });
 
 // ===============================================================
@@ -120,10 +149,15 @@ Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
 class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 ) {
-  constructor(actor, suggestions, options = {}) {
+  // `combat` is the encounter whose turn opened the panel. A refresh checks
+  // that encounter by id rather than game.combat, which can be another one.
+  constructor(actor, suggestions, combat, options = {}) {
     super(options);
     this.actor = actor;
     this.suggestions = suggestions;
+    this.combatId = combat?.id;
+    this.turnKey = combat ? turnKey(combat) : null;
+    this._expanded = false;
   }
 
   static DEFAULT_OPTIONS = {
@@ -162,10 +196,14 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     };
   }
 
+  // The window frame (header, resize handle) survives re-renders, so its
+  // listeners and the saved position and size are set up once. The part's
+  // HTML is replaced on every render, so its listeners are bound each time.
   _onRender(context, options) {
     if (options.isFirstRender) {
       const saved = ThirdActionPanel._loadState();
       const savedSize = ThirdActionPanel._loadSize();
+      this._expanded = !!saved?.expanded;
       if (savedSize?.width) this.setPosition({ width: savedSize.width });
 
       // Position: use saved coords if available, otherwise auto-calculate.
@@ -195,45 +233,72 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
           ThirdActionPanel._saveSize(size);
         }, { once: true });
       });
-
-      const row  = this.element.querySelector('.third-action-collapsed-row');
-      const list = this.element.querySelector('.third-action-suggestions');
-      const icon = this.element.querySelector('.third-action-expand-btn i');
-      const hint = this.element.querySelector('.third-action-hint');
-
-      // Restore expanded/collapsed state.
-      if (saved?.expanded) {
-        list.hidden = false;
-        icon?.classList.replace('fa-chevron-down', 'fa-chevron-up');
-        if (hint) hint.textContent = 'Hide suggestions';
-      }
-      this._fitToContent();
-
-      row?.addEventListener('click', () => {
-        const expanding = list.hidden;
-        list.hidden = !expanding;
-        icon?.classList.toggle('fa-chevron-down', !expanding);
-        icon?.classList.toggle('fa-chevron-up',    expanding);
-        if (hint) hint.textContent = expanding ? 'Hide suggestions' : 'Show suggestions';
-        this._fitToContent();
-        ThirdActionPanel._saveState({ expanded: expanding });
-      });
-
-      this.element.querySelectorAll('.third-action-roll-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          this._rollAction(btn.dataset.slug, btn.dataset.needsTarget === 'true', {}, Number(btn.dataset.map) || 0);
-        });
-      });
-
-      // Variant sub-menu (Create a Diversion)
-      this.element.querySelectorAll('.third-action-variant-list li').forEach(li => {
-        li.addEventListener('click', () => {
-          li.closest('details').removeAttribute('open');
-          this._rollAction(li.dataset.slug, false, { variant: li.dataset.variant });
-        });
-      });
     }
+
+    // The suggestion count changes on a refresh, and Foundry only sets the
+    // title on the first render.
+    if (this.window?.title) this.window.title.textContent = this.title;
+
+    this._applyExpanded();
+    // A minimized window can't be measured; maximize() fits it instead.
+    if (!this.minimized) this._fitToContent();
+
+    this.element.querySelector('.third-action-collapsed-row')?.addEventListener('click', () => {
+      this._expanded = !this._expanded;
+      this._applyExpanded();
+      this._fitToContent();
+      ThirdActionPanel._saveState({ expanded: this._expanded });
+    });
+
+    this.element.querySelectorAll('.third-action-roll-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        this._rollAction(btn.dataset.slug, btn.dataset.needsTarget === 'true', {}, Number(btn.dataset.map) || 0);
+      });
+    });
+
+    // Variant sub-menu (Create a Diversion)
+    this.element.querySelectorAll('.third-action-variant-list li').forEach(li => {
+      li.addEventListener('click', () => {
+        li.closest('details').removeAttribute('open');
+        this._rollAction(li.dataset.slug, false, { variant: li.dataset.variant });
+      });
+    });
+  }
+
+  // Shows or hides the list to match this._expanded, with its chevron and hint.
+  _applyExpanded() {
+    const expanded = this._expanded;
+    const list = this.element.querySelector('.third-action-suggestions');
+    const icon = this.element.querySelector('.third-action-expand-btn i');
+    const hint = this.element.querySelector('.third-action-hint');
+    if (list) list.hidden = !expanded;
+    icon?.classList.toggle('fa-chevron-down', !expanded);
+    icon?.classList.toggle('fa-chevron-up',    expanded);
+    if (hint) hint.textContent = expanded ? 'Hide suggestions' : 'Show suggestions';
+  }
+
+  // Recompute the suggestions for the current battlefield and re-render in
+  // place. Position, size and expanded state carry over, and so does the
+  // list's scroll, which the re-render would otherwise reset. Never closes
+  // the panel.
+  async refresh() {
+    try {
+      this.suggestions = getSuggestions(this.actor);
+    } catch (e) {
+      console.warn('PF2E Third Action | Could not refresh suggestions:', e);
+      return;
+    }
+    const scrollTop = this.element?.querySelector('.third-action-suggestions')?.scrollTop ?? 0;
+    await this.render();
+    const list = this.element?.querySelector('.third-action-suggestions');
+    if (list && scrollTop) list.scrollTop = scrollTop;
+  }
+
+  async maximize() {
+    const wasMinimized = this.minimized;
+    await super.maximize();
+    if (wasMinimized && this.rendered) this._fitToContent();
   }
 
   // Collapsed: one row. Expanded: the list's natural height, capped so long

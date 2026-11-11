@@ -134,6 +134,15 @@
   gap: 6px;
 }
 
+/* Shown when a mid-turn refresh leaves nothing to suggest. */
+.third-action-empty {
+  margin: 0;
+  padding: 4px 2px;
+  font-size: 0.76rem;
+  font-style: italic;
+  color: var(--ta-muted);
+}
+
 .third-action-item {
   background: var(--ta-surface);
   border: 1px solid var(--ta-border);
