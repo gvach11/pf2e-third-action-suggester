@@ -13,7 +13,10 @@ export function countAttacksSince(messages, { actorId, since }) {
   for (const m of messages ?? []) {
     if (m?.speaker?.actor !== actorId) continue;
     if (!((m._stats?.createdTime ?? m.timestamp) >= since)) continue;
-    if (m.flags?.pf2e?.context?.traits?.includes('attack')) count++;
+    const context = m.flags?.pf2e?.context;
+    // A strike's damage roll carries the attack trait too, but isn't an attack.
+    if (context?.type === 'damage-roll') continue;
+    if (Array.isArray(context?.traits) && context.traits.includes('attack')) count++;
   }
   return count;
 }

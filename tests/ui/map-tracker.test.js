@@ -25,6 +25,20 @@ describe('countAttacksSince', () => {
   });
 });
 
+describe('countAttacksSince damage and malformed rolls', () => {
+  it("doesn't count a strike's damage roll, which also carries the attack trait", () => {
+    const damage = { speaker: { actor: 'a' }, timestamp: 2000,
+      flags: { pf2e: { context: { type: 'damage-roll', traits: ['attack'] } } } };
+    expect(countAttacksSince([msg('a', 2000), damage], { actorId: 'a', since: 1000 })).toBe(1);
+  });
+
+  it("doesn't throw on non-array traits and doesn't count them", () => {
+    const odd = [msg('a', 2000, 'attack'), msg('a', 2000, { attack: true }), msg('a', 2000, null)];
+    expect(() => countAttacksSince(odd, { actorId: 'a', since: 1000 })).not.toThrow();
+    expect(countAttacksSince(odd, { actorId: 'a', since: 1000 })).toBe(0);
+  });
+});
+
 describe('countAttacksSince clocks', () => {
   it("uses the server's created time over the client timestamp", () => {
     const m = { ...msg('a', 500), _stats: { createdTime: 2000 } };
