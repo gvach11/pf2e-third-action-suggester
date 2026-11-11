@@ -15,8 +15,9 @@ import { targetIssue } from './ui/target-check.js';
 import { isDismissal, shouldAutoOpen, shouldOpenPendingTurn } from './ui/auto-open.js';
 
 let _activePanel = null;
-// When the current turn began, as TAS saw it. Panels opened in a turn TAS did
-// not see start (reload, keybind) have no reliable count and show no MAP hint.
+// When the current turn began, as TAS saw it. Any panel for that turn, keybind
+// ones included, gets the MAP hint. A turn TAS didn't see start (a page reload
+// mid-turn) has no reliable count, so its panels show no MAP hint.
 let _turnStart = null;
 // A turn that may auto-open but had nothing to suggest when it started:
 // { combatId, turnKey, actorId }. A mid-turn refresh opens it once it does.
