@@ -10,12 +10,14 @@ When it's your turn in combat, a floating panel appears suggesting smart options
 
 - **Automatic suggestions** on turn start, tailored to the current actor
 - **Rollable actions** — click the dice button to roll directly from the panel
+- **Multiple attack penalty** — Trip, Shove, Grapple, Disarm, Reposition and Escape also have **−5** and **−10** buttons for your second and later attacks
 - **Colour-coded cards** by category (Athletics, Social, Defensive, Knowledge, Stealth)
 - **Skill rank indicator** on each card showing your current proficiency
 - **Archives of Nethys links** on every suggestion
 - **Condition awareness** — suppresses irrelevant actions (e.g. no Grapple suggestions if the target is already Restrained; Escape surfaces automatically when you are Grabbed)
 - **Create a Diversion variant picker** — choose Distracting Words, Gesture, or Trick before rolling
 - **Persistent panel** — remembers its position and expanded/collapsed state across page refreshes
+- **Scrollable, resizable panel** — long lists scroll instead of running off screen; drag the corner to resize, and the size is remembered
 - **Keybind** (default `Alt+Shift+S`) to open or close the panel manually
 
 ### Action Catalog
@@ -51,9 +53,9 @@ https://raw.githubusercontent.com/gvach11/pf2e-third-action-suggester/main/modul
 2. Start a combat encounter.
 3. When a turn begins for a character you own (or any combatant if you are the GM), the suggestion panel appears automatically in the lower-right of the screen.
 4. Click the collapsed row to expand the suggestions.
-5. Click the **dice button** on any card to roll that action directly.
+5. Click the **dice button** on any card to roll that action directly. On attack actions (Trip, Shove, Grapple, Disarm, Reposition, Escape), click **−5** or **−10** instead if you've already attacked this turn.
 6. Click the **ⓘ icon** on Recall Knowledge or Aid to post a chat reminder (whispered to you only). With Recall Knowledge Assistant installed, Recall Knowledge gets a dice button instead (see below).
-7. Drag the panel to reposition it — its location is remembered.
+7. Drag the panel to reposition it — its location is remembered. Drag its bottom-right corner to resize it; long lists scroll.
 
 **Keyboard shortcut:** `Alt+Shift+S` toggles the panel open/closed during combat. Rebind it in *Configure Controls → Modules*.
 

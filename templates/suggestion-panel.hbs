@@ -58,6 +58,21 @@
                   <i class="fas fa-dice-d20"></i>
                 {{/if}}
               </button>
+              {{#if this.hasMap}}
+                {{!-- Same roll with the multiple attack penalty (2nd / 3rd+ attack) --}}
+                <button type="button"
+                        class="third-action-roll-btn third-action-map-btn"
+                        data-slug="{{this.slug}}"
+                        data-needs-target="{{this.needsTarget}}"
+                        data-map="1"
+                        title="Roll {{this.name}} as your second attack (−5 multiple attack penalty)">−5</button>
+                <button type="button"
+                        class="third-action-roll-btn third-action-map-btn"
+                        data-slug="{{this.slug}}"
+                        data-needs-target="{{this.needsTarget}}"
+                        data-map="2"
+                        title="Roll {{this.name}} as your third or later attack (−10 multiple attack penalty)">−10</button>
+              {{/if}}
             {{/if}}
 
           </div>

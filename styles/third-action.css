@@ -13,6 +13,17 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
   border: 1px solid var(--ta-border);
   border-radius: 4px;
+  min-width: 280px;
+}
+
+/* Expanded, the panel can't be resized smaller than a couple of suggestions.
+   Collapsed it is a single row, so there is nothing to resize. */
+#pf2e-third-action-suggester-panel.is-expanded {
+  min-height: 120px;
+}
+
+#pf2e-third-action-suggester-panel:not(.is-expanded) .window-resize-handle {
+  display: none;
 }
 
 /* ── Window chrome ─────────────────────────────────────────────── */
@@ -43,6 +54,30 @@
   background: var(--ta-dark);
   padding: 0;
   border-radius: 0 0 4px 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The body fills the window; the toggle row stays put and the list scrolls. */
+#pf2e-third-action-suggester-panel .third-action-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#pf2e-third-action-suggester-panel .third-action-collapsed-row {
+  flex: 0 0 auto;
+}
+
+/* :not([hidden]) so collapsing still hides the list. */
+#pf2e-third-action-suggester-panel .third-action-suggestions:not([hidden]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ta-border) transparent;
 }
 
 /* ── Collapsed row (always visible) ───────────────────────────── */
@@ -184,6 +219,14 @@
   background: rgba(201, 168, 76, 0.22);
   border-color: var(--ta-gold);
   color: var(--ta-gold);
+}
+
+/* -5 / -10 multiple attack penalty buttons */
+.third-action-map-btn {
+  font-size: 0.7rem;
+  font-weight: bold;
+  min-width: 2.1em;
+  text-align: center;
 }
 
 .third-action-roll-btn.is-chat-only {

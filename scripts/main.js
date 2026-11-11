@@ -3,6 +3,8 @@
  */
 
 import { canRouteToRka, hasWorthwhileRecallTarget, openRecallKnowledge } from './integrations/rka.js';
+import { MAP_ACTIONS, rollSystemAction } from './actions/roll-action.js';
+import { expandedHeight, fitTop } from './ui/panel-geometry.js';
 
 let _activePanel = null;
 
@@ -124,7 +126,7 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     id: 'pf2e-third-action-suggester-panel',
     classes: ['pf2e-third-action-suggester'],
     position: { width: 360, height: 'auto' },
-    window: { resizable: false, minimizable: true, icon: 'fa-solid fa-hand-fist' }
+    window: { resizable: true, minimizable: true, icon: 'fa-solid fa-hand-fist' }
   };
 
   static PARTS = {
@@ -145,6 +147,7 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
         slug:          s.slug,
         needsTarget:   s.needsTarget,
         isChatOnly:    s.isChatOnly    ?? false,
+        hasMap:        s.hasMap        ?? false,
         category:      s.category      ?? '',
         categoryIcon:  s.categoryIcon  ?? '',
         categoryColor: s.categoryColor ?? '',
@@ -158,6 +161,8 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
   _onRender(context, options) {
     if (options.isFirstRender) {
       const saved = ThirdActionPanel._loadState();
+      const savedSize = ThirdActionPanel._loadSize();
+      if (savedSize?.width) this.setPosition({ width: savedSize.width });
 
       // Position: use saved coords if available, otherwise auto-calculate.
       if (saved?.left !== undefined && saved?.top !== undefined) {
@@ -176,6 +181,17 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
         ThirdActionPanel._saveState({ left: this.position.left, top: this.position.top });
       });
 
+      // Save the size once the user lets go of the resize handle. The pointer
+      // is usually off the handle by then, so listen on the whole window.
+      // Height only counts while expanded; collapsed is always one row.
+      this.element.querySelector('.window-resize-handle')?.addEventListener('pointerdown', () => {
+        window.addEventListener('pointerup', () => {
+          const size = { width: this.element.offsetWidth };
+          if (this.element.classList.contains('is-expanded')) size.height = this.element.offsetHeight;
+          ThirdActionPanel._saveSize(size);
+        }, { once: true });
+      });
+
       const row  = this.element.querySelector('.third-action-collapsed-row');
       const list = this.element.querySelector('.third-action-suggestions');
       const icon = this.element.querySelector('.third-action-expand-btn i');
@@ -186,8 +202,8 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
         list.hidden = false;
         icon?.classList.replace('fa-chevron-down', 'fa-chevron-up');
         if (hint) hint.textContent = 'Hide suggestions';
-        this.setPosition({ height: 'auto' });
       }
+      this._fitToContent();
 
       row?.addEventListener('click', () => {
         const expanding = list.hidden;
@@ -195,14 +211,14 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
         icon?.classList.toggle('fa-chevron-down', !expanding);
         icon?.classList.toggle('fa-chevron-up',    expanding);
         if (hint) hint.textContent = expanding ? 'Hide suggestions' : 'Show suggestions';
-        this.setPosition({ height: 'auto' });
+        this._fitToContent();
         ThirdActionPanel._saveState({ expanded: expanding });
       });
 
       this.element.querySelectorAll('.third-action-roll-btn').forEach(btn => {
         btn.addEventListener('click', e => {
           e.stopPropagation();
-          this._rollAction(btn.dataset.slug, btn.dataset.needsTarget === 'true');
+          this._rollAction(btn.dataset.slug, btn.dataset.needsTarget === 'true', {}, Number(btn.dataset.map) || 0);
         });
       });
 
@@ -216,7 +232,39 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     }
   }
 
+  // Collapsed: one row. Expanded: the list's natural height, capped so long
+  // lists scroll (see expandedHeight), and moved up if it would leave the
+  // screen. Foundry may shift the window while measuring, so the top it had
+  // beforehand is the one kept on screen.
+  _fitToContent() {
+    const expanded = !this.element.querySelector('.third-action-suggestions').hidden;
+    this.element.classList.toggle('is-expanded', expanded);
+    const top = this.position.top;
+    this.setPosition({ height: 'auto' });
+    if (!expanded) return;
+    const viewportHeight = window.innerHeight;
+    const height = expandedHeight({
+      contentHeight: this.element.offsetHeight,
+      savedHeight:   ThirdActionPanel._loadSize()?.height,
+      viewportHeight,
+    });
+    this.setPosition({ height, top: fitTop({ top, height, viewportHeight }) });
+  }
+
   // ── Persistent state helpers (localStorage) ─────────────────────
+  // Size is a separate key: unlike position and expanded state, it is a
+  // standing preference and survives the end of combat.
+  static _saveSize(partial) {
+    const current = ThirdActionPanel._loadSize() ?? {};
+    try { localStorage.setItem('pf2e-third-action-suggester-size', JSON.stringify(Object.assign(current, partial))); }
+    catch { /* storage unavailable — size just isn't remembered */ }
+  }
+
+  static _loadSize() {
+    try { return JSON.parse(localStorage.getItem('pf2e-third-action-suggester-size')); }
+    catch { return null; }
+  }
+
   static _saveState(partial) {
     const current = ThirdActionPanel._loadState() ?? {};
     localStorage.setItem('pf2e-third-action-suggester-state', JSON.stringify(Object.assign(current, partial)));
@@ -231,7 +279,8 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     localStorage.removeItem('pf2e-third-action-suggester-state');
   }
 
-  _rollAction(slug, needsTarget, overrideOpts = {}) {
+  // `map` is the multiple attack penalty step: 0 = none, 1 = -5, 2 = -10.
+  _rollAction(slug, needsTarget, overrideOpts = {}, map = 0) {
     if (needsTarget && game.user.targets.size === 0) {
       ui.notifications.warn('PF2E Third Action | Select a target token first, then click the roll button.');
       return;
@@ -253,17 +302,16 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
       return;
     }
 
-    // Native PF2E system action registry.
-    // Multi-word actions are registered in camelCase (raiseAShield, createADiversion, etc.)
-    // Try kebab slug first, then camelCase fallback.
-    const camel = slug.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    const action = game.pf2e?.actions?.[slug] ?? game.pf2e?.actions?.[camel];
-    if (typeof action === 'function') {
-      // Some actions require extra options (e.g. Create a Diversion needs a variant)
-      const extraOpts = { ...(ACTION_OPTIONS[slug] ?? {}), ...overrideOpts };
-      action({ actors: [this.actor], ...extraOpts });
-      return;
-    }
+    // Native PF2E system action registry. Some actions require extra options
+    // (e.g. Create a Diversion needs a variant).
+    const handled = rollSystemAction(game.pf2e?.actions, {
+      actor:   this.actor,
+      slug,
+      map,
+      options: { ...(ACTION_OPTIONS[slug] ?? {}), ...overrideOpts },
+      onError: e => ui.notifications.warn(`PF2E Third Action | ${e?.message ?? e}`),
+    });
+    if (handled) return;
 
     ui.notifications.warn(`PF2E Third Action | No roll handler found for "${slug}". Roll manually.`);
   }
@@ -482,6 +530,7 @@ function getSuggestions(actor) {
           slug,
           needsTarget:   !NO_TARGET_ACTIONS.has(slug),
           isChatOnly:    slug in CHAT_ACTIONS && !(slug === 'recall-knowledge' && canRouteToRka(actor)),
+          hasMap:        MAP_ACTIONS.has(slug),
           category:      rule.category      ?? '',
           categoryIcon:  catCfg.icon        ?? '',
           categoryColor: catCfg.color       ?? '',
