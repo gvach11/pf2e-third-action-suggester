@@ -127,12 +127,14 @@ Hooks.on('deleteCombat', () => {
 Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
   if (!('turn' in changed) && !('round' in changed)) return;
   if (!combat.started) return;
+  // The old turn's panel closes for everyone, including a player whose turn
+  // just ended and who doesn't own the next combatant.
+  if (_activePanel) { _activePanel.close(); _activePanel = null; }
   const combatant = combat.combatant;
   const actor = combatant?.actor;
   if (!actor) return;
   if (!game.user.isGM && !actor.isOwner) return;
   _turnStart = { key: turnKey(combat), at: combat._stats?.modifiedTime ?? Date.now() };
-  if (_activePanel) { _activePanel.close(); _activePanel = null; }
   if (!game.settings.get('pf2e-third-action-suggester', 'autoTrigger')) return;
   if (!autoOpenAllowed(actor)) return;
   const suggestions = getSuggestions(actor);
