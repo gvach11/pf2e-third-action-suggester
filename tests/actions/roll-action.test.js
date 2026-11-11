@@ -76,6 +76,61 @@ describe('rollSystemAction', () => {
     expect(trip).not.toHaveBeenCalled();
   });
 
+  it('falls back to the action object when there is no legacy function', () => {
+    const takeCover = actionObject();
+    const handled = rollSystemAction(fakeActions({ objects: { 'take-cover': takeCover } }), { actor, slug: 'take-cover' });
+    expect(handled).toBe(true);
+    expect(takeCover.use).toHaveBeenCalledWith({ actors: [actor] });
+  });
+
+  it('hands a failed fallback action-object roll to onError', async () => {
+    const error = new Error('nope');
+    const takeCover = { use: vi.fn(() => Promise.reject(error)) };
+    const onError = vi.fn();
+    rollSystemAction(fakeActions({ objects: { 'take-cover': takeCover } }), { actor, slug: 'take-cover', onError });
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(error));
+  });
+
+  it('does not use the action object fallback for a penalised non-attack action', () => {
+    const takeCover = actionObject();
+    const handled = rollSystemAction(fakeActions({ objects: { 'take-cover': takeCover } }), { actor, slug: 'take-cover', map: 1 });
+    expect(handled).toBe(false);
+    expect(takeCover.use).not.toHaveBeenCalled();
+  });
+
+  it('rolls Battle Medicine as a Medicine check', () => {
+    const roll = vi.fn(() => Promise.resolve());
+    const medic = { name: 'Medic', skills: { medicine: { roll } } };
+    const handled = rollSystemAction(fakeActions(), { actor: medic, slug: 'battle-medicine' });
+    expect(handled).toBe(true);
+    expect(roll).toHaveBeenCalledWith({
+      label: 'Battle Medicine',
+      traits: ['healing', 'manipulate'],
+      extraRollOptions: ['action:battle-medicine'],
+    });
+  });
+
+  it('hands a failed Battle Medicine roll to onError', async () => {
+    const error = new Error('boom');
+    const medic = { skills: { medicine: { roll: vi.fn(() => Promise.reject(error)) } } };
+    const onError = vi.fn();
+    rollSystemAction(fakeActions(), { actor: medic, slug: 'battle-medicine', onError });
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(error));
+  });
+
+  it('hands a Battle Medicine roll that throws straight away to onError', () => {
+    const error = new Error('sync');
+    const medic = { skills: { medicine: { roll: vi.fn(() => { throw error; }) } } };
+    const onError = vi.fn();
+    expect(rollSystemAction(fakeActions(), { actor: medic, slug: 'battle-medicine', onError })).toBe(true);
+    expect(onError).toHaveBeenCalledWith(error);
+  });
+
+  it('Battle Medicine without a Medicine statistic is not handled', () => {
+    expect(rollSystemAction(fakeActions(), { actor: { skills: {} }, slug: 'battle-medicine' })).toBe(false);
+    expect(rollSystemAction(fakeActions(), { actor, slug: 'battle-medicine' })).toBe(false);
+  });
+
   it('reports an unknown action as not handled', () => {
     expect(rollSystemAction(fakeActions(), { actor, slug: 'no-such-action' })).toBe(false);
   });
