@@ -3,7 +3,7 @@ import { assessBattlefield, tokenFacts } from '../../scripts/profile/battlefield
 
 function facts(overrides = {}) {
   return {
-    token: {}, relation: 'enemy', distance: 5, visible: true, defeated: false,
+    token: {}, relation: 'enemy', distance: 5, visible: true, defeated: false, dead: false,
     holdsItem: false, hpRatio: 1, conditions: { slugs: new Set(), values: {} },
     ...overrides,
   };
@@ -58,6 +58,37 @@ describe('assessBattlefield', () => {
     const r = assessBattlefield([facts({ relation: 'ally', hpRatio: 0.75 })], { reach: 5 });
     expect(r.hasInjuredAdjacentAlly).toBe(false);
   });
+
+  it('a downed ally at HP 0 needs Battle Medicine but can\'t be Aided', () => {
+    const downed = facts({ relation: 'ally', distance: 5, hpRatio: 0, defeated: true, dead: false });
+    const r = assessBattlefield([downed], { reach: 5 });
+    expect(r.hasInjuredAdjacentAlly).toBe(true);
+    expect(r.hasAdjacentAlly).toBe(false);
+  });
+
+  it('an unconscious ally counts as injured', () => {
+    const asleep = facts({
+      relation: 'ally', hpRatio: 1, defeated: true, dead: false,
+      conditions: { slugs: new Set(['unconscious']), values: {} },
+    });
+    const r = assessBattlefield([asleep], { reach: 5 });
+    expect(r.hasInjuredAdjacentAlly).toBe(true);
+    expect(r.hasAdjacentAlly).toBe(false);
+  });
+
+  it('a dead ally counts for nothing', () => {
+    const dead = facts({ relation: 'ally', distance: 5, hpRatio: 0, defeated: true, dead: true });
+    const r = assessBattlefield([dead], { reach: 5 });
+    expect(r.hasInjuredAdjacentAlly).toBe(false);
+    expect(r.hasAdjacentAlly).toBe(false);
+  });
+
+  it('a downed enemy still counts for nothing', () => {
+    const downed = facts({ hpRatio: 0, defeated: true, dead: false });
+    const r = assessBattlefield([downed], { reach: 5 });
+    expect(r.hasAdjacentEnemy).toBe(false);
+    expect(r.hasNearbyEnemy).toBe(false);
+  });
 });
 
 function tok({ hp = { value: 10, max: 10 }, disposition = -1, combatant, conditions = [], items = {}, center = { x: 0, y: 0 } } = {}) {
@@ -107,6 +138,15 @@ describe('tokenFacts', () => {
 
   it('a live token is not defeated', () => {
     expect(tokenFacts(tok(), selfWith(() => 5)).defeated).toBe(false);
+  });
+
+  it('only a dead condition or a defeated combatant is dead', () => {
+    const self = selfWith(() => 5);
+    expect(tokenFacts(tok({ conditions: ['dead'] }), self).dead).toBe(true);
+    expect(tokenFacts(tok({ combatant: { isDefeated: true } }), self).dead).toBe(true);
+    expect(tokenFacts(tok({ hp: { value: 0, max: 10 } }), self).dead).toBe(false);
+    expect(tokenFacts(tok({ conditions: ['unconscious'] }), self).dead).toBe(false);
+    expect(tokenFacts(tok(), self).dead).toBe(false);
   });
 
   it('reads relation, held items and HP', () => {

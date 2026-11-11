@@ -20,9 +20,11 @@ export function tokenFacts(token, selfToken) {
   const hp = actor.system?.attributes?.hp;
   const hpRatio = hp ? hp.value / (hp.max || 1) : 1;
   const combatant = token.combatant ?? token.document?.combatant;
-  const defeated = !!hp && hp.value <= 0
-    || !!combatant?.isDefeated
-    || conditions.slugs.has('dead')
+  // `dead` is beyond help; `defeated` also covers the downed (HP 0 or
+  // unconscious), who are out of the fight but can still be treated.
+  const dead = !!combatant?.isDefeated || conditions.slugs.has('dead');
+  const defeated = dead
+    || !!hp && hp.value <= 0
     || conditions.slugs.has('unconscious');
 
   const mine = selfToken.document.disposition;
@@ -36,6 +38,7 @@ export function tokenFacts(token, selfToken) {
     distance: measureFeet(token, selfToken),
     visible: token.visible !== false,
     defeated,
+    dead,
     holdsItem: held.some(i => i.isHeld),
     hpRatio,
     conditions,
@@ -48,6 +51,10 @@ export function assessBattlefield(others, { reach }) {
   const nearby = enemies.filter(o => o.distance <= NEARBY_FEET);
   const adjacent = nearby.filter(o => o.distance <= reach);
   const adjacentAllies = live.filter(o => o.relation === 'ally' && o.distance <= reach);
+  // Battle Medicine can treat a downed ally, so only the dead are left out.
+  const treatableAllies = others.filter(o =>
+    o.visible && !o.dead && o.relation === 'ally' && o.distance <= reach);
+  const isInjured = o => o.hpRatio < INJURED_RATIO || !!o.conditions?.slugs?.has('unconscious');
 
   return {
     hasAdjacentEnemy:       adjacent.length > 0,
@@ -55,7 +62,7 @@ export function assessBattlefield(others, { reach }) {
     hasNearbyEnemy:         nearby.length > 0,
     nearbyEnemyTokens:      nearby.map(o => o.token),
     hasAdjacentAlly:        adjacentAllies.length > 0,
-    hasInjuredAdjacentAlly: adjacentAllies.some(o => o.hpRatio < INJURED_RATIO),
+    hasInjuredAdjacentAlly: treatableAllies.some(isInjured),
     hasFeintableEnemy:      adjacent.some(o => !o.conditions.slugs.has('off-guard')),
     hasDemoralizableEnemy:  nearby.some(o => (o.conditions.values['frightened'] ?? 0) < 4),
     hasTrippableEnemy:      adjacent.some(o => !o.conditions.slugs.has('prone')),
