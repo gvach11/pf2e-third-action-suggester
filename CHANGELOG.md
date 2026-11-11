@@ -9,9 +9,27 @@ All notable changes to **PF2E Third Action Suggester** are documented here.
 ### Added
 - Trip, Shove, Grapple, Disarm, Reposition and Escape have **−5** and **−10** buttons next to the dice button, to roll them with the multiple attack penalty
 - The suggestion panel can be resized from its bottom-right corner; its size is remembered, including across encounters
+- The panel refreshes mid-turn when tokens move, conditions or HP change, a combatant is defeated, or your target changes; a refresh never closes it, and with nothing to suggest it says "No suggestions right now."
+- The MAP button that applies this turn is highlighted (d20 before any attack, −5 after one, −10 after two or more); its tooltip says how many attacks you've made
+- With exactly one target, a suggestion your target makes pointless is dimmed with a reason, e.g. "Your target is already prone." It never names the target
+- New client setting "GM: Auto-Open For" (All turns, NPC turns only, Never); the keybind always works
+- NPCs get Trip, Shove and Disarm, and their skill labels show the modifier (e.g. "Athletics +12") instead of a rank
+- Take Cover now rolls (posts its effect), and Battle Medicine rolls a Medicine check labelled Battle Medicine
 
 ### Fixed
 - A long suggestion list no longer runs off screen: it scrolls, and the expanded panel moves up to stay on screen
+- Large and Huge enemies count as adjacent, and reach weapons are respected
+- Defeated enemies and enemies you can't see are ignored
+- NPC skills are read correctly
+- Unconscious, dying, paralyzed and petrified characters get no suggestions
+- Rogues (with the Sneak Attack class feature) now see Sneak
+- Raise a Shield is only suggested when pf2e has a shield in use; an unequipped buckler doesn't count
+- Escape comes first while you're Grabbed; it is now a Defensive action, and its text names Athletics, Acrobatics or your unarmed attack
+- Disarm is only suggested when an adjacent enemy is holding something
+- Battle Medicine is only suggested for an adjacent injured ally, or for yourself when you're low on HP
+- Demoralize needs trained Intimidation and Create a Diversion needs trained Deception, replacing the Charisma +1 check; the minimum-rank setting now applies to them
+- Recall Knowledge is suggested with a trained knowledge skill (it used to need expert)
+- "Athletics Actions" is now "Athletics & Acrobatics Actions" (Grapple, Trip, Shove, Disarm, Reposition, Tumble Through)
 
 ---
 

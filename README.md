@@ -11,10 +11,14 @@ When it's your turn in combat, a floating panel appears suggesting smart options
 - **Automatic suggestions** on turn start, tailored to the current actor
 - **Rollable actions** — click the dice button to roll directly from the panel
 - **Multiple attack penalty** — Trip, Shove, Grapple, Disarm, Reposition and Escape also have **−5** and **−10** buttons for your second and later attacks
-- **Colour-coded cards** by category (Athletics, Social, Defensive, Knowledge, Stealth)
-- **Skill rank indicator** on each card showing your current proficiency
+- **Colour-coded cards** by category (Athletics & Acrobatics, Social, Defensive, Knowledge, Stealth)
+- **Skill rank indicator** on each card showing your current proficiency (NPCs show the modifier instead, e.g. *Athletics +12*)
 - **Archives of Nethys links** on every suggestion
-- **Condition awareness** — suppresses irrelevant actions (e.g. no Grapple suggestions if the target is already Restrained; Escape surfaces automatically when you are Grabbed)
+- **Condition awareness** — suppresses irrelevant actions (e.g. no Grapple suggestions if the target is already Restrained; Escape comes first when you are Grabbed; Disarm only when an enemy is holding something)
+- **Accurate targeting** — Large and Huge enemies and reach weapons count; defeated enemies and enemies you can't see are ignored; unconscious, dying, paralyzed and petrified characters get no suggestions
+- **Live panel** — refreshes mid-turn when tokens move, conditions or HP change, a combatant is defeated, or your target changes
+- **MAP highlight** — the −5 or −10 button that applies this turn is highlighted, and its tooltip says how many attacks you've made
+- **Target warnings** — with one target, a suggestion it makes pointless is dimmed with a reason (e.g. *Your target is already prone.*)
 - **Create a Diversion variant picker** — choose Distracting Words, Gesture, or Trick before rolling
 - **Persistent panel** — remembers its position and expanded/collapsed state across page refreshes
 - **Scrollable, resizable panel** — long lists scroll instead of running off screen; drag the corner to resize, and the size is remembered
@@ -24,9 +28,9 @@ When it's your turn in combat, a floating panel appears suggesting smart options
 
 | Category | Actions |
 |---|---|
-| Athletics | Trip, Shove, Grapple, Disarm, Reposition, Escape, Tumble Through |
+| Athletics & Acrobatics | Trip, Shove, Grapple, Disarm, Reposition, Tumble Through |
 | Social | Demoralize, Feint, Create a Diversion, Bon Mot |
-| Defensive | Raise a Shield, Take Cover, Battle Medicine |
+| Defensive | Raise a Shield, Take Cover, Battle Medicine, Escape |
 | Knowledge | Recall Knowledge, Aid |
 | Stealth | Sneak |
 
@@ -51,11 +55,12 @@ https://raw.githubusercontent.com/gvach11/pf2e-third-action-suggester/main/modul
 
 1. Enable the module in your world's module settings.
 2. Start a combat encounter.
-3. When a turn begins for a character you own (or any combatant if you are the GM), the suggestion panel appears automatically in the lower-right of the screen.
+3. When a turn begins for a character you own (or any combatant if you are the GM, depending on *GM: Auto-Open For*), the suggestion panel appears automatically in the lower-right of the screen.
 4. Click the collapsed row to expand the suggestions.
 5. Click the **dice button** on any card to roll that action directly. On attack actions (Trip, Shove, Grapple, Disarm, Reposition, Escape), click **−5** or **−10** instead if you've already attacked this turn.
 6. Click the **ⓘ icon** on Recall Knowledge or Aid to post a chat reminder (whispered to you only). With Recall Knowledge Assistant installed, Recall Knowledge gets a dice button instead (see below).
-7. Drag the panel to reposition it — its location is remembered. Drag its bottom-right corner to resize it; long lists scroll.
+7. The panel refreshes as the turn plays out, and highlights the MAP button that applies after your attacks.
+8. Drag the panel to reposition it — its location is remembered. Drag its bottom-right corner to resize it; long lists scroll.
 
 **Keyboard shortcut:** `Alt+Shift+S` toggles the panel open/closed during combat. Rebind it in *Configure Controls → Modules*.
 
@@ -67,13 +72,14 @@ All settings are in *Configure Settings → Module Settings → PF2E Third Actio
 
 | Setting | Description | Default |
 |---|---|---|
-| Athletics Actions | Include Athletics suggestions | On |
+| Athletics & Acrobatics Actions | Include Athletics and Acrobatics suggestions | On |
 | Social Actions | Include Social suggestions | On |
 | Defensive Actions | Include Defensive suggestions | On |
 | Knowledge & Support Actions | Include Knowledge suggestions | On |
 | Stealth Actions | Include Stealth suggestions | On |
 | Minimum Skill Rank | Only suggest skill actions at or above this proficiency tier | Trained |
 | Auto-Open Panel on Turn Start | Show the panel automatically; disable for manual-only mode | On |
+| GM: Auto-Open For | Which turns open the panel for the GM: All turns, NPC turns only, or Never. The keybind always works | All turns |
 
 ---
 
