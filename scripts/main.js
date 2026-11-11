@@ -12,6 +12,7 @@ import { CHAT_ACTIONS } from './suggestions/rules.js';
 import { readActorProfile } from './profile/actor-profile.js';
 import { assessBattlefield, tokenFacts } from './profile/battlefield.js';
 import { targetIssue } from './ui/target-check.js';
+import { shouldAutoOpen } from './ui/auto-open.js';
 
 let _activePanel = null;
 // When the current turn began, as TAS saw it. Panels opened in a turn TAS did
@@ -59,6 +60,16 @@ Hooks.once('init', () => {
     default: true,
   });
 
+  game.settings.register('pf2e-third-action-suggester', 'gmAutoOpen', {
+    name: 'GM: Auto-Open For',
+    hint: "Which combatants' turns open the panel automatically on the GM's screen. The keybind always works.",
+    scope: 'client',
+    config: true,
+    type:  String,
+    choices: { all: 'All turns', npc: 'NPC turns only', none: 'Never' },
+    default: 'all',
+  });
+
   // ── Keybind: manual panel toggle ────────────────────────────────────────────
   game.keybindings.register('pf2e-third-action-suggester', 'togglePanel', {
     name: 'Toggle Suggestion Panel',
@@ -83,6 +94,14 @@ Hooks.once('init', () => {
   });
 });
 
+function autoOpenAllowed(actor) {
+  return shouldAutoOpen({
+    isGM: game.user.isGM,
+    hasPlayerOwner: !!actor.hasPlayerOwner,
+    gmMode: game.settings.get('pf2e-third-action-suggester', 'gmAutoOpen'),
+  });
+}
+
 Hooks.once('ready', () => {
   console.log('PF2E Third Action Suggester | Ready');
   // Restore panel after a page refresh if combat is already running and it's
@@ -93,6 +112,7 @@ Hooks.once('ready', () => {
   const actor = combat.combatant?.actor;
   if (!actor) return;
   if (!game.user.isGM && !actor.isOwner) return;
+  if (!autoOpenAllowed(actor)) return;
   const suggestions = getSuggestions(actor);
   if (suggestions.length === 0) return;
   _activePanel = new ThirdActionPanel(actor, suggestions, combat);
@@ -114,6 +134,7 @@ Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
   _turnStart = { key: turnKey(combat), at: combat._stats?.modifiedTime ?? Date.now() };
   if (_activePanel) { _activePanel.close(); _activePanel = null; }
   if (!game.settings.get('pf2e-third-action-suggester', 'autoTrigger')) return;
+  if (!autoOpenAllowed(actor)) return;
   const suggestions = getSuggestions(actor);
   if (suggestions.length === 0) return;
   _activePanel = new ThirdActionPanel(actor, suggestions, combat);
