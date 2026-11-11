@@ -6,7 +6,7 @@ import { canRouteToRka, hasWorthwhileRecallTarget, openRecallKnowledge } from '.
 import { rollSystemAction } from './actions/roll-action.js';
 import { expandedHeight, fitTop } from './ui/panel-geometry.js';
 import { debounce, isRelevantTokenChange, isStaleTurn, turnKey } from './ui/refresh.js';
-import { countAttacksSince, mapStepFor } from './ui/map-tracker.js';
+import { countAttacksSince, mapButtonState, mapStepFor } from './ui/map-tracker.js';
 import { buildSuggestions } from './suggestions/engine.js';
 import { CHAT_ACTIONS } from './suggestions/rules.js';
 import { readActorProfile } from './profile/actor-profile.js';
@@ -110,7 +110,7 @@ Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
   const actor = combatant?.actor;
   if (!actor) return;
   if (!game.user.isGM && !actor.isOwner) return;
-  _turnStart = { key: turnKey(combat), at: Date.now() };
+  _turnStart = { key: turnKey(combat), at: combat._stats?.modifiedTime ?? Date.now() };
   if (_activePanel) { _activePanel.close(); _activePanel = null; }
   if (!game.settings.get('pf2e-third-action-suggester', 'autoTrigger')) return;
   const suggestions = getSuggestions(actor);
@@ -293,13 +293,14 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
       ? countAttacksSince(game.messages?.contents ?? [], { actorId: this.actor.id, since: _turnStart.at })
       : 0;
     const step = mapStepFor(count);
-    const prefix = `Suggested: you've made ${count} ${count === 1 ? 'attack' : 'attacks'} this turn.`;
     el.querySelectorAll('.third-action-map-btn[data-map]').forEach(mapBtn => {
       mapBtn.parentElement.querySelectorAll('.third-action-roll-btn[data-slug]').forEach(btn => {
         if (btn.dataset.baseTitle === undefined) btn.dataset.baseTitle = btn.getAttribute('title') ?? '';
-        const suggested = known && (Number(btn.dataset.map) || 0) === step;
-        btn.classList.toggle('is-suggested-map', suggested);
-        btn.title = suggested ? `${prefix} ${btn.dataset.baseTitle}` : btn.dataset.baseTitle;
+        const state = mapButtonState({
+          map: Number(btn.dataset.map) || 0, baseTitle: btn.dataset.baseTitle, step, attacks: count, known,
+        });
+        btn.classList.toggle('is-suggested-map', state.highlighted);
+        btn.title = state.title;
       });
     });
   }
