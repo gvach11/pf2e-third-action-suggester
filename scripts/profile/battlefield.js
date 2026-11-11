@@ -4,9 +4,12 @@ import { readConditions } from './actor-profile.js';
 const NEARBY_FEET = 30;
 const INJURED_RATIO = 0.75;
 
-function measureFeet(token, selfToken) {
+// pf2e uses `reach` for the 10-ft reach diagonal rule.
+function measureFeet(token, selfToken, reach) {
   try {
-    if (typeof selfToken.distanceTo === 'function') return selfToken.distanceTo(token) ?? Infinity;
+    if (typeof selfToken.distanceTo === 'function') {
+      return selfToken.distanceTo(token, reach === undefined ? {} : { reach }) ?? Infinity;
+    }
     return canvas.grid.measurePath([
       { x: selfToken.center.x, y: selfToken.center.y },
       { x: token.center.x,     y: token.center.y     },
@@ -14,7 +17,7 @@ function measureFeet(token, selfToken) {
   } catch { return Infinity; }
 }
 
-export function tokenFacts(token, selfToken) {
+export function tokenFacts(token, selfToken, { reach } = {}) {
   const actor = token.actor;
   const conditions = readConditions(actor);
   const hp = actor.system?.attributes?.hp;
@@ -35,7 +38,7 @@ export function tokenFacts(token, selfToken) {
   return {
     token,
     relation,
-    distance: measureFeet(token, selfToken),
+    distance: measureFeet(token, selfToken, reach),
     visible: token.visible !== false,
     defeated,
     dead,

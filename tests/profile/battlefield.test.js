@@ -115,6 +115,20 @@ describe('tokenFacts', () => {
     expect(tokenFacts(tok(), self).distance).toBe(5);
   });
 
+  it("forwards reach to pf2e's distanceTo", () => {
+    const distanceTo = vi.fn(() => 10);
+    const other = tok();
+    tokenFacts(other, selfWith(distanceTo), { reach: 10 });
+    expect(distanceTo).toHaveBeenCalledWith(other, { reach: 10 });
+  });
+
+  it('measures without reach when none is given', () => {
+    const distanceTo = vi.fn(() => 5);
+    const other = tok();
+    tokenFacts(other, selfWith(distanceTo));
+    expect(distanceTo).toHaveBeenCalledWith(other, {});
+  });
+
   it('falls back to grid measurement when distanceTo is missing', () => {
     const measurePath = vi.fn(() => ({ distance: 10 }));
     vi.stubGlobal('canvas', { grid: { measurePath } });

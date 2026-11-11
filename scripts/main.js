@@ -224,8 +224,8 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     try {
       const selfToken = this.actor.getActiveTokens(true)[0];
       if (game.user.targets.size === 1 && selfToken) {
-        target = tokenFacts([...game.user.targets][0], selfToken);
         reach = this.actor.getReach?.({ action: 'attack' }) || 5;
+        target = tokenFacts([...game.user.targets][0], selfToken, { reach });
       }
     } catch (e) {
       console.warn('PF2E Third Action | Could not read the target:', e);
@@ -499,10 +499,10 @@ function readBattlefieldContext(actor) {
     const token = actor.getActiveTokens(true)[0];
     if (!token || !canvas?.tokens) return defaults;
 
+    const reach = actor.getReach?.({ action: 'attack' }) || 5;
     const others = canvas.tokens.placeables
       .filter(t => t !== token && t.actor)
-      .map(t => tokenFacts(t, token));
-    const reach = actor.getReach?.({ action: 'attack' }) || 5;
+      .map(t => tokenFacts(t, token, { reach }));
     const { nearbyEnemyTokens, ...flags } = assessBattlefield(others, { reach });
     return {
       ...flags,
