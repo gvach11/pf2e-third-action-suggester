@@ -59,7 +59,7 @@ export const RULES = [
       !p.isRestrained && p.hasAdjacentEnemy && p.abilities.str >= 1 &&
       (p.hasFreeHand || p.hasAdjacentGrabbedEnemy),
     why: p => {
-      const intro = p.hasAdjacentGrabbedEnemy ? 'You have an enemy Grabbed - Reposition' : 'With a free hand, Reposition';
+      const intro = p.hasAdjacentGrabbedEnemy ? 'You have an enemy Grabbed - Reposition' : (p.handsKnown ? 'With a free hand, Reposition' : 'Reposition');
       return `${intro} uses Athletics ${signed(p.skills['athletics']?.mod)} to muscle them up to 5 ft into a space of your choice (10 ft on a crit). Target must stay within your reach.`;
     }
   },
@@ -101,31 +101,30 @@ export const RULES = [
     requiresAdjacentEnemy: true, athleticsBoost: true,
     source: 'https://2e.aonprd.com/Actions.aspx?ID=2383',
     condition: p =>
-      !p.isRestrained && p.hasAdjacentEnemy &&
+      !p.isRestrained && p.hasAdjacentEnemy && p.hasDisarmableEnemy &&
       (p.skills['athletics']?.rank ?? 0) >= 1 && p.abilities.str >= 1,
     why: p =>
       `Athletics ${signed(p.skills['athletics']?.mod)} - success: -2 to enemy attacks with that weapon. Critical success: weapon falls to the ground.`
   },
 
   {
-    name: 'Escape', actions: 1, priority: 12, category: 'athletics', skillReq: 0,
+    name: 'Escape', actions: 1, priority: 30, category: 'defensive', skillReq: 0,
     defensiveBoost: true,
     source: 'https://2e.aonprd.com/Actions.aspx?ID=2371',
     condition: p => p.isGrabbed,
     why: p => {
       const ath = p.skills['athletics']?.mod ?? 0;
       const acr = p.skills['acrobatics']?.mod ?? 0;
-      const best = ath >= acr ? `Athletics ${signed(ath)}` : `Acrobatics ${signed(acr)}`;
-      return `You are Grabbed or Restrained - Escape uses ${best} to break free and end the condition.`;
+      return `You are Grabbed or Restrained - Escape rolls your best of Athletics ${signed(ath)}, Acrobatics ${signed(acr)} or your unarmed attack to break free.`;
     }
   },
 
   // -- INTIMIDATION
 
   {
-    name: 'Demoralize', actions: 1, priority: 9, category: 'social', skill: 'intimidation', skillReq: 0,
+    name: 'Demoralize', actions: 1, priority: 9, category: 'social', skill: 'intimidation', skillReq: 1,
     source: 'https://2e.aonprd.com/Actions.aspx?ID=2395',
-    condition: p => p.hasNearbyEnemy && p.hasDemoralizableEnemy && p.abilities.cha >= 1,
+    condition: p => p.hasNearbyEnemy && p.hasDemoralizableEnemy && (p.skills['intimidation']?.rank ?? 0) >= 1,
     why: p =>
       `Intimidation ${signed(p.skills['intimidation']?.mod)} - Frightened 1: -1 status penalty to all checks and DCs (Frightened 2 on a crit). Target immune for 10 minutes after.`
   },
@@ -143,9 +142,9 @@ export const RULES = [
   },
 
   {
-    name: 'Create a Diversion', actions: 1, priority: 7, category: 'social', skill: 'deception', skillReq: 0,
+    name: 'Create a Diversion', actions: 1, priority: 7, category: 'social', skill: 'deception', skillReq: 1,
     source: 'https://2e.aonprd.com/Actions.aspx?ID=2387',
-    condition: p => p.hasNearbyEnemy && p.abilities.cha >= 1,
+    condition: p => p.hasNearbyEnemy && (p.skills['deception']?.rank ?? 0) >= 1,
     why: p =>
       `Deception ${signed(p.skills['deception']?.mod)} - on success you become Hidden, allowing you to Sneak away or set up an off-guard Strike.`
   },
@@ -205,13 +204,13 @@ export const RULES = [
   },
 
   {
-    name: 'Recall Knowledge', actions: 1, priority: 5, category: 'knowledge', skillReq: 2,
+    name: 'Recall Knowledge', actions: 1, priority: 5, category: 'knowledge', skillReq: 1,
     source: 'https://2e.aonprd.com/Actions.aspx?ID=26',
     condition: p =>
       p.hasWorthwhileRecallTarget &&
-      KNOWLEDGE_SKILLS.some(s => (p.skills[s]?.rank ?? 0) >= 2),
+      KNOWLEDGE_SKILLS.some(s => (p.skills[s]?.rank ?? 0) >= 1),
     why: () =>
-      "Expert knowledge skills - identifying a creature's weakness or immunity can change the encounter strategy entirely."
+      "Knowledge skills - identifying a creature's weakness or immunity can change the encounter strategy entirely."
   },
 
   // -- ACROBATICS
@@ -232,8 +231,8 @@ export const RULES = [
     source: 'https://2e.aonprd.com/Actions.aspx?ID=63',
     condition: p =>
       !p.isRestrained && (
-        (p.skills['stealth']?.rank ?? 0) >= 1 && p.abilities.dex >= 2 &&
-        p.featSlugs.has('sneak-attacker') ||
+        ((p.skills['stealth']?.rank ?? 0) >= 1 && p.abilities.dex >= 2 &&
+          (p.featSlugs.has('sneak-attack') || p.featSlugs.has('sneak-attacker'))) ||
         ((p.skills['stealth']?.rank ?? 0) >= 2 && p.abilities.dex >= 3)
       ),
     why: p =>

@@ -15,9 +15,9 @@ let _activePanel = null;
 Hooks.once('init', () => {
   // ── Action category toggles ─────────────────────────────────────────────────
   const CATEGORIES = [
-    ['athletics', 'Athletics Actions',                       'Grapple, Trip, Shove, Disarm, Reposition, Escape, Tumble Through'],
+    ['athletics', 'Athletics & Acrobatics Actions',          'Grapple, Trip, Shove, Disarm, Reposition, Tumble Through'],
     ['social',    'Social Actions',                          'Demoralize, Feint, Create a Diversion, Bon Mot'],
-    ['defensive', 'Defensive Actions',                       'Raise a Shield, Take Cover, Battle Medicine'],
+    ['defensive', 'Defensive Actions',                       'Raise a Shield, Take Cover, Battle Medicine, Escape'],
     ['knowledge', 'Knowledge & Support Actions',             'Recall Knowledge, Aid'],
     ['stealth',   'Stealth Actions',                         'Sneak'],
   ];
