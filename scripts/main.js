@@ -11,6 +11,7 @@ import { buildSuggestions } from './suggestions/engine.js';
 import { CHAT_ACTIONS } from './suggestions/rules.js';
 import { readActorProfile } from './profile/actor-profile.js';
 import { assessBattlefield, tokenFacts } from './profile/battlefield.js';
+import { targetIssue } from './ui/target-check.js';
 
 let _activePanel = null;
 // When the current turn began, as TAS saw it. Panels opened in a turn TAS did
@@ -139,6 +140,7 @@ Hooks.on('updateToken', (_token, changed) => {
 // move ends; the trailing debounce makes the last refresh land after that.
 Hooks.on('sightRefresh', () => refreshIfCurrent());
 Hooks.on('createToken', () => refreshIfCurrent());
+Hooks.on('targetToken', () => refreshIfCurrent());
 Hooks.on('deleteToken', () => refreshIfCurrent());
 for (const hook of ['createItem', 'updateItem', 'deleteItem']) {
   Hooks.on(hook, item => {
@@ -192,8 +194,21 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
   }
 
   async _prepareContext(_options) {
+    // Target facts exist only with exactly one target and a token of our own.
+    let target = null;
+    let reach = 5;
+    try {
+      const selfToken = this.actor.getActiveTokens(true)[0];
+      if (game.user.targets.size === 1 && selfToken) {
+        target = tokenFacts([...game.user.targets][0], selfToken);
+        reach = this.actor.getReach?.({ action: 'attack' }) || 5;
+      }
+    } catch (e) {
+      console.warn('PF2E Third Action | Could not read the target:', e);
+    }
     return {
       suggestions: this.suggestions.map(s => ({
+        targetIssue:   targetIssue(s.slug, target, { reach }),
         name:          s.name,
         diamonds:      '◆'.repeat(s.actions),
         why:           s.why,

@@ -271,6 +271,18 @@
   line-height: 1.45;
 }
 
+.third-action-item.has-target-issue {
+  opacity: 0.6;
+}
+
+.action-target-issue {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--ta-gold);
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+
 /* Variant picker (Create a Diversion sub-menu) */
 .third-action-variant-picker {
   position: relative;

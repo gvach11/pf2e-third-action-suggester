@@ -16,7 +16,7 @@
     {{else}}
     <div class="third-action-list">
       {{#each suggestions}}
-      <div class="third-action-item" style="--ta-category-color: {{this.categoryColor}}">
+      <div class="third-action-item{{#if this.targetIssue}} has-target-issue{{/if}}" style="--ta-category-color: {{this.categoryColor}}">
 
         <div class="third-action-item-header">
 
@@ -88,6 +88,9 @@
         {{/if}}
 
         <p class="action-why">{{this.why}}</p>
+        {{#if this.targetIssue}}
+          <p class="action-target-issue">{{this.targetIssue}}</p>
+        {{/if}}
       </div>
       {{/each}}
     </div>
