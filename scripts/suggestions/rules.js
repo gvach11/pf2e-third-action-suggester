@@ -169,7 +169,7 @@ export const RULES = [
     source: 'https://2e.aonprd.com/Feats.aspx?ID=5125',
     condition: p =>
       !p.isRestrained && p.featSlugs.has('battle-medicine') &&
-      (p.skills['medicine']?.rank ?? 0) >= 1 && (p.isLowHp || p.hasInjuredAlly),
+      (p.skills['medicine']?.rank ?? 0) >= 1 && (p.isLowHp || p.hasInjuredAdjacentAlly),
     why: p =>
       p.isLowHp
         ? `Battle Medicine feat - Medicine ${signed(p.skills['medicine']?.mod)} - heal yourself using Treat Wounds DCs. Requires healer's toolkit.`

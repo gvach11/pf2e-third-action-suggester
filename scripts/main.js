@@ -7,7 +7,8 @@ import { rollSystemAction } from './actions/roll-action.js';
 import { expandedHeight, fitTop } from './ui/panel-geometry.js';
 import { buildSuggestions } from './suggestions/engine.js';
 import { CHAT_ACTIONS } from './suggestions/rules.js';
-import { readActorProfile, readConditions } from './profile/actor-profile.js';
+import { readActorProfile } from './profile/actor-profile.js';
+import { assessBattlefield, tokenFacts } from './profile/battlefield.js';
 
 let _activePanel = null;
 
@@ -335,77 +336,32 @@ function readProfile(actor) {
 
 function readBattlefieldContext(actor) {
   const defaults = {
-    hasAdjacentEnemy:        false,
-    adjacentEnemyCount:      0,
-    hasNearbyEnemy:          false,
+    hasAdjacentEnemy:          false,
+    adjacentEnemyCount:        0,
+    hasNearbyEnemy:            false,
     hasWorthwhileRecallTarget: false,
-    hasAdjacentAlly:         false,
-    hasInjuredAlly:          false,
-    hasFeintableEnemy:       true,
-    hasDemoralizableEnemy:   true,
-    hasTrippableEnemy:       true,
-    hasGrapplableEnemy:      true,
-    hasAdjacentGrabbedEnemy: false,
+    hasAdjacentAlly:           false,
+    hasInjuredAdjacentAlly:    false,
+    hasFeintableEnemy:         true,
+    hasDemoralizableEnemy:     true,
+    hasTrippableEnemy:         true,
+    hasGrapplableEnemy:        true,
+    hasDisarmableEnemy:        false,
+    hasAdjacentGrabbedEnemy:   false,
   };
 
   try {
     const token = actor.getActiveTokens(true)[0];
     if (!token || !canvas?.tokens) return defaults;
 
-    const allTokens  = canvas.tokens.placeables.filter(t => t !== token && t.actor);
-    const myDisp     = token.document.disposition;
-    const enemies    = allTokens.filter(t => t.document.disposition !== myDisp && t.document.disposition !== 0);
-    const allies     = allTokens.filter(t => t.document.disposition === myDisp);
-
-    const measureFeet = (t) => {
-      try {
-        return canvas.grid.measurePath([
-          { x: token.center.x, y: token.center.y },
-          { x: t.center.x,     y: t.center.y     }
-        ]).distance ?? Infinity;
-      } catch { return Infinity; }
-    };
-
-    // Measure each enemy's distance and read its conditions once, then bucket.
-    const adjacentEnemies = [];
-    const nearbyEnemies   = [];
-    const adjC = [];
-    const nearC = [];
-    for (const t of enemies) {
-      const dist = measureFeet(t);
-      if (dist > 30) continue;
-      const conditions = readConditions(t.actor);
-      nearbyEnemies.push(t);
-      nearC.push(conditions);
-      if (dist <= 5) {
-        adjacentEnemies.push(t);
-        adjC.push(conditions);
-      }
-    }
-
-    const hasInjuredAlly = allies.some(t => {
-      const hp = t.actor.system?.attributes?.hp;
-      return hp && (hp.value / (hp.max || 1)) < 0.75;
-    });
-
-    const hasFeintableEnemy       = adjC.length  === 0 ? false : adjC.some(c => !c.slugs.has('off-guard'));
-    const hasDemoralizableEnemy   = nearC.length === 0 ? false : nearC.some(c => (c.values['frightened'] ?? 0) < 4);
-    const hasTrippableEnemy       = adjC.length  === 0 ? false : adjC.some(c => !c.slugs.has('prone'));
-    const hasGrapplableEnemy      = adjC.length  === 0 ? false : adjC.some(c => !c.slugs.has('restrained'));
-    const hasAdjacentGrabbedEnemy = adjC.some(c => c.slugs.has('grabbed') || c.slugs.has('restrained'));
-
+    const others = canvas.tokens.placeables
+      .filter(t => t !== token && t.actor)
+      .map(t => tokenFacts(t, token));
+    const reach = actor.getReach?.({ action: 'attack' }) || 5;
+    const { nearbyEnemyTokens, ...flags } = assessBattlefield(others, { reach });
     return {
-      hasAdjacentEnemy:        adjacentEnemies.length > 0,
-      adjacentEnemyCount:      adjacentEnemies.length,
-      hasNearbyEnemy:          nearbyEnemies.length > 0,
-      hasWorthwhileRecallTarget: hasWorthwhileRecallTarget(actor, nearbyEnemies),
-      hasAdjacentAlly:         allies.some(t => measureFeet(t) <= 5),
-      hasInjuredAlly,
-      hasFeintableEnemy,
-      hasDemoralizableEnemy,
-      hasTrippableEnemy,
-      hasGrapplableEnemy,
-      hasAdjacentGrabbedEnemy,
+      ...flags,
+      hasWorthwhileRecallTarget: hasWorthwhileRecallTarget(actor, nearbyEnemyTokens),
     };
   } catch (e) {
     console.warn('PF2E Third Action | Could not read battlefield context:', e);

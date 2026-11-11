@@ -15,7 +15,7 @@ export function makeProfile(overrides = {}) {
     hasNearbyEnemy: false,
     hasWorthwhileRecallTarget: false,
     hasAdjacentAlly: false,
-    hasInjuredAlly: false,
+    hasInjuredAdjacentAlly: false,
     isGrabbed: false,
     isRestrained: false,
     hasFeintableEnemy: false,
