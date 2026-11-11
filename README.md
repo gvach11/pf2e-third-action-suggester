@@ -17,7 +17,7 @@ When it's your turn in combat, a floating panel appears suggesting smart options
 - **Condition awareness** — suppresses irrelevant actions (e.g. no Grapple suggestions if the target is already Restrained; Escape comes first when you are Grabbed; Disarm only when an enemy is holding something)
 - **Accurate targeting** — Large and Huge enemies and reach weapons count; defeated enemies and enemies you can't see are ignored; unconscious, dying, paralyzed and petrified characters get no suggestions
 - **Live panel** — refreshes mid-turn when tokens move, conditions or HP change, a combatant is defeated, or your target changes
-- **MAP highlight** — the −5 or −10 button that applies this turn is highlighted, and its tooltip says how many attacks you've made
+- **MAP highlight** — the roll button that applies this turn is highlighted (d20 before any attack, −5 after one, −10 after two or more), and its tooltip says how many attacks you've made. After a page reload mid-turn there is no highlight until the next turn
 - **Target warnings** — with one target, a suggestion it makes pointless is dimmed with a reason (e.g. *Your target is already prone.*)
 - **Create a Diversion variant picker** — choose Distracting Words, Gesture, or Trick before rolling
 - **Persistent panel** — remembers its position and expanded/collapsed state across page refreshes
@@ -33,6 +33,8 @@ When it's your turn in combat, a floating panel appears suggesting smart options
 | Defensive | Raise a Shield, Take Cover, Battle Medicine, Escape |
 | Knowledge | Recall Knowledge, Aid |
 | Stealth | Sneak |
+
+Skill actions follow your proficiency: Demoralize needs trained Intimidation, Create a Diversion needs trained Deception, and Recall Knowledge needs a trained knowledge skill. The *Minimum Skill Rank* setting raises the bar for all skill actions. NPCs' ranks can't be read, so the setting doesn't filter them.
 
 > **Design principle:** Third Strikes are never suggested. The −10 MAP penalty makes almost any maneuver, utility, or defensive action a better use of your third action.
 
@@ -68,16 +70,16 @@ https://raw.githubusercontent.com/gvach11/pf2e-third-action-suggester/main/modul
 
 ## Settings
 
-All settings are in *Configure Settings → Module Settings → PF2E Third Action Suggester*.
+All settings are in *Configure Settings → Module Settings → PF2E Third Action Suggester*. The two auto-open settings are per user; the rest apply to the whole world.
 
 | Setting | Description | Default |
 |---|---|---|
 | Athletics & Acrobatics Actions | Include Athletics and Acrobatics suggestions | On |
 | Social Actions | Include Social suggestions | On |
 | Defensive Actions | Include Defensive suggestions | On |
-| Knowledge & Support Actions | Include Knowledge suggestions | On |
+| Knowledge & Support Actions | Include Recall Knowledge and Aid suggestions | On |
 | Stealth Actions | Include Stealth suggestions | On |
-| Minimum Skill Rank | Only suggest skill actions at or above this proficiency tier | Trained |
+| Minimum Skill Rank for Suggestions | Only suggest skill actions at or above this proficiency tier | Trained |
 | Auto-Open Panel on Turn Start | Show the panel automatically; disable for manual-only mode | On |
 | GM: Auto-Open For | Which turns open the panel for the GM: All turns, NPC turns only, or Never. The keybind always works | All turns |
 
@@ -90,7 +92,7 @@ If [PF2e Recall Knowledge Assistant](https://github.com/gvach11/pf2e-recall-know
 - On a character's turn, the Recall Knowledge **dice button** opens its guided dialog for that character. Target the enemy first with Foundry's Target tool.
 - Recall Knowledge is only suggested while at least one enemy you can see within 30 ft is still worth an attempt: the character hasn't failed against it this encounter, and still has something left to learn about it.
 
-On an NPC's turn, or without Recall Knowledge Assistant, Recall Knowledge works as before: a whispered chat reminder, suggested whenever an enemy is within 30 ft.
+Without Recall Knowledge Assistant, Recall Knowledge is a whispered chat reminder, suggested when you're trained in a knowledge skill and can see an enemy within 30 ft. NPCs don't get Recall Knowledge suggestions.
 
 ---
 
