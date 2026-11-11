@@ -12,12 +12,17 @@ import { CHAT_ACTIONS } from './suggestions/rules.js';
 import { readActorProfile } from './profile/actor-profile.js';
 import { assessBattlefield, tokenFacts } from './profile/battlefield.js';
 import { targetIssue } from './ui/target-check.js';
-import { shouldAutoOpen } from './ui/auto-open.js';
+import { isDismissal, shouldAutoOpen, shouldOpenPendingTurn } from './ui/auto-open.js';
 
 let _activePanel = null;
 // When the current turn began, as TAS saw it. Panels opened in a turn TAS did
 // not see start (reload, keybind) have no reliable count and show no MAP hint.
 let _turnStart = null;
+// A turn that may auto-open but had nothing to suggest when it started:
+// { combatId, turnKey, actorId }. A mid-turn refresh opens it once it does.
+let _pendingTurn = null;
+// The turn whose panel the user closed. TAS doesn't auto-reopen it.
+let _dismissedTurnKey = null;
 
 Hooks.once('init', () => {
   // ── Action category toggles ─────────────────────────────────────────────────
@@ -113,14 +118,45 @@ Hooks.once('ready', () => {
   if (!actor) return;
   if (!game.user.isGM && !actor.isOwner) return;
   if (!autoOpenAllowed(actor)) return;
+  openOrWait(actor, combat);
+});
+
+// Opens the panel for a turn that may auto-open, or, with nothing to suggest
+// yet, remembers the turn so a mid-turn refresh can open it later.
+function openOrWait(actor, combat) {
   const suggestions = getSuggestions(actor);
+  if (suggestions.length === 0) {
+    _pendingTurn = { combatId: combat.id, turnKey: turnKey(combat), actorId: actor.id };
+    return;
+  }
+  _activePanel = new ThirdActionPanel(actor, suggestions, combat);
+  _activePanel.render(true);
+}
+
+// Opens a pending turn's panel once there is something to suggest.
+function openPendingTurn() {
+  const pending = _pendingTurn;
+  const combat = pending ? game.combats?.get(pending.combatId) : null;
+  if (!shouldOpenPendingTurn({ pending, dismissedKey: _dismissedTurnKey, hasPanel: !!_activePanel, combat })) return;
+  const actor = combat.combatant?.actor;
+  if (!actor || actor.id !== pending.actorId) return;
+  if (!game.settings.get('pf2e-third-action-suggester', 'autoTrigger') || !autoOpenAllowed(actor)) return;
+  let suggestions;
+  try {
+    suggestions = getSuggestions(actor);
+  } catch (e) {
+    console.warn('PF2E Third Action | Could not refresh suggestions:', e);
+    return;
+  }
   if (suggestions.length === 0) return;
   _activePanel = new ThirdActionPanel(actor, suggestions, combat);
   _activePanel.render(true);
-});
+}
 
 Hooks.on('deleteCombat', () => {
   if (_activePanel) { _activePanel.close(); _activePanel = null; }
+  _pendingTurn = null;
+  _dismissedTurnKey = null;
   ThirdActionPanel._clearState();
 });
 
@@ -130,6 +166,7 @@ Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
   // The old turn's panel closes for everyone, including a player whose turn
   // just ended and who doesn't own the next combatant.
   if (_activePanel) { _activePanel.close(); _activePanel = null; }
+  _pendingTurn = null;
   const combatant = combat.combatant;
   const actor = combatant?.actor;
   if (!actor) return;
@@ -137,19 +174,18 @@ Hooks.on('updateCombat', (combat, changed, _options, _userId) => {
   _turnStart = { key: turnKey(combat), at: combat._stats?.modifiedTime ?? Date.now() };
   if (!game.settings.get('pf2e-third-action-suggester', 'autoTrigger')) return;
   if (!autoOpenAllowed(actor)) return;
-  const suggestions = getSuggestions(actor);
-  if (suggestions.length === 0) return;
-  _activePanel = new ThirdActionPanel(actor, suggestions, combat);
-  _activePanel.render(true);
+  openOrWait(actor, combat);
 });
 
 // ── Mid-turn refresh ────────────────────────────────────────────────
 // Players usually move before their third action, so the panel recomputes
 // whenever the battlefield changes. Every hook just pokes the debounced
 // refresh, which does nothing unless the open panel's turn is still on.
+// With no panel, it opens a pending turn that now has suggestions.
 const refreshIfCurrent = debounce(() => {
   const panel = _activePanel;
-  if (!panel?.rendered) return;
+  if (!panel) { openPendingTurn(); return; }
+  if (!panel.rendered) return;
   if (isStaleTurn(panel.turnKey, game.combats?.get(panel.combatId))) return;
   panel.refresh().catch(e => console.warn('PF2E Third Action | refresh failed:', e));
 }, 250);
@@ -487,6 +523,8 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
 
   async close(options = {}) {
     if (_activePanel === this) _activePanel = null;
+    // Closed by the user during its own turn: don't auto-reopen that turn.
+    if (isDismissal(this.turnKey, game.combats?.get(this.combatId))) _dismissedTurnKey = this.turnKey;
     return super.close(options);
   }
 }
