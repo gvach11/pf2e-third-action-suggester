@@ -23,6 +23,7 @@ export function makeProfile(overrides = {}) {
     hasTrippableEnemy: false,
     hasGrapplableEnemy: false,
     hasAdjacentGrabbedEnemy: false,
+    hasDisarmableEnemy: false,
     ...overrides,
   };
 }

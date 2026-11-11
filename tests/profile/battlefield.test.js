@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { assessBattlefield, tokenFacts } from '../../scripts/profile/battlefield.js';
 
 function facts(overrides = {}) {
@@ -46,14 +46,26 @@ describe('assessBattlefield', () => {
     expect(assessBattlefield([far], { reach: 5 }).hasInjuredAdjacentAlly).toBe(false);
     expect(assessBattlefield([near], { reach: 5 }).hasInjuredAdjacentAlly).toBe(true);
   });
+
+  it("neutral and ally tokens don't drive the enemy flags", () => {
+    const r = assessBattlefield([facts({ relation: 'neutral' }), facts({ relation: 'ally' })], { reach: 5 });
+    expect(r.hasAdjacentEnemy).toBe(false);
+    expect(r.hasNearbyEnemy).toBe(false);
+    expect(r.hasAdjacentAlly).toBe(true);
+  });
+
+  it('an ally at exactly 75% HP is not injured', () => {
+    const r = assessBattlefield([facts({ relation: 'ally', hpRatio: 0.75 })], { reach: 5 });
+    expect(r.hasInjuredAdjacentAlly).toBe(false);
+  });
 });
 
-function tok({ size = 1, hp = { value: 10, max: 10 }, disposition = -1, combatant, conditions = [], items = {} } = {}) {
+function tok({ hp = { value: 10, max: 10 }, disposition = -1, combatant, conditions = [], items = {}, center = { x: 0, y: 0 } } = {}) {
   return {
-    document: { disposition, combatant: undefined },
+    document: { disposition },
     combatant,
     visible: true,
-    center: { x: 0, y: 0 },
+    center,
     actor: {
       itemTypes: { condition: conditions.map(slug => ({ slug, system: { value: { value: null } } })), weapon: [], shield: [], ...items },
       system: { attributes: { hp } },
@@ -61,25 +73,45 @@ function tok({ size = 1, hp = { value: 10, max: 10 }, disposition = -1, combatan
   };
 }
 
+const selfWith = (distanceTo) => ({ ...tok({ disposition: 1 }), ...(distanceTo ? { distanceTo } : {}) });
+
 describe('tokenFacts', () => {
-  it("uses pf2e's size-aware distance", () => {
-    const self = tok({ disposition: 1 });
-    self.distanceTo = () => 5;
-    expect(tokenFacts(tok({ size: 2 }), self).distance).toBe(5);
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("uses pf2e's size-aware distance, not centre-to-centre", () => {
+    vi.stubGlobal('canvas', { grid: { measurePath: () => ({ distance: 7.5 }) } });
+    const self = selfWith(() => 5);
+    expect(tokenFacts(tok(), self).distance).toBe(5);
+  });
+
+  it('falls back to grid measurement when distanceTo is missing', () => {
+    const measurePath = vi.fn(() => ({ distance: 10 }));
+    vi.stubGlobal('canvas', { grid: { measurePath } });
+    const self = { ...tok({ disposition: 1, center: { x: 1, y: 2 } }) };
+    const other = tok({ center: { x: 3, y: 4 } });
+    expect(tokenFacts(other, self).distance).toBe(10);
+    expect(measurePath).toHaveBeenCalledWith([{ x: 1, y: 2 }, { x: 3, y: 4 }]);
   });
 
   it('marks a defeated combatant', () => {
-    const self = tok({ disposition: 1 });
-    self.distanceTo = () => 5;
-    expect(tokenFacts(tok({ combatant: { isDefeated: true } }), self).defeated).toBe(true);
-    expect(tokenFacts(tok(), self).defeated).toBe(false);
+    expect(tokenFacts(tok({ combatant: { isDefeated: true } }), selfWith(() => 5)).defeated).toBe(true);
+  });
+
+  it('HP at 0 is defeated', () => {
+    expect(tokenFacts(tok({ hp: { value: 0, max: 10 } }), selfWith(() => 5)).defeated).toBe(true);
+  });
+
+  it.each(['dead', 'unconscious'])('a %s condition is defeated', (slug) => {
+    expect(tokenFacts(tok({ conditions: [slug] }), selfWith(() => 5)).defeated).toBe(true);
+  });
+
+  it('a live token is not defeated', () => {
+    expect(tokenFacts(tok(), selfWith(() => 5)).defeated).toBe(false);
   });
 
   it('reads relation, held items and HP', () => {
-    const self = tok({ disposition: 1 });
-    self.distanceTo = () => 5;
     const other = tok({ disposition: 0, hp: { value: 5, max: 10 }, items: { shield: [{ isHeld: true }] } });
-    const f = tokenFacts(other, self);
+    const f = tokenFacts(other, selfWith(() => 5));
     expect(f.relation).toBe('neutral');
     expect(f.holdsItem).toBe(true);
     expect(f.hpRatio).toBe(0.5);
