@@ -4,14 +4,21 @@
  */
 
 /**
- * Counts `actorId`'s attack-trait rolls made at or after `since` (ms). Both
- * sides should be server times: a message's `_stats.createdTime` is preferred
- * to its `timestamp`, which comes from the sender's clock and can be skewed.
+ * Counts attack-trait rolls made at or after `since` (ms) by the panel's
+ * token. Unlinked NPC tokens share their base actor's id, so a message that
+ * names a token must name `tokenId`; one without a token (or a panel without
+ * a token id) matches on `actorId`. Both times should be server times: a
+ * message's `_stats.createdTime` is preferred to its `timestamp`, which comes
+ * from the sender's clock and can be skewed.
  */
-export function countAttacksSince(messages, { actorId, since }) {
+export function countAttacksSince(messages, { actorId, tokenId, since }) {
   let count = 0;
   for (const m of messages ?? []) {
-    if (m?.speaker?.actor !== actorId) continue;
+    const speaker = m?.speaker;
+    const mine = tokenId && speaker?.token
+      ? speaker.token === tokenId
+      : speaker?.actor === actorId;
+    if (!mine) continue;
     if (!((m._stats?.createdTime ?? m.timestamp) >= since)) continue;
     const context = m.flags?.pf2e?.context;
     // A strike's damage roll carries the attack trait too, but isn't an attack.

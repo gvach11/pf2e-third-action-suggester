@@ -195,6 +195,9 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     this.suggestions = suggestions;
     this.combatId = combat?.id;
     this.turnKey = combat ? turnKey(combat) : null;
+    // The turn's token. Unlinked NPCs share a base actor id, so the MAP count
+    // matches chat speakers by token where it can.
+    this.tokenId = combat?.combatant?.tokenId ?? actor.token?.id ?? null;
     this._expanded = false;
   }
 
@@ -326,7 +329,9 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
     if (!el) return;
     const known = !!_turnStart && _turnStart.key === this.turnKey;
     const count = known
-      ? countAttacksSince(game.messages?.contents ?? [], { actorId: this.actor.id, since: _turnStart.at })
+      ? countAttacksSince(game.messages?.contents ?? [], {
+        actorId: this.actor.id, tokenId: this.tokenId, since: _turnStart.at,
+      })
       : 0;
     const step = mapStepFor(count);
     el.querySelectorAll('.third-action-map-btn[data-map]').forEach(mapBtn => {

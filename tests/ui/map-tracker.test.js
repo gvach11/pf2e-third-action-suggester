@@ -39,6 +39,25 @@ describe('countAttacksSince damage and malformed rolls', () => {
   });
 });
 
+describe('countAttacksSince speaker token', () => {
+  const withToken = (actor, token) => ({ ...msg(actor, 2000), speaker: { actor, token } });
+
+  it("matches the panel token's id when the message names a token", () => {
+    // Two unlinked goblins share base actor 'g'; only tok1's attacks count.
+    const messages = [withToken('g', 'tok1'), withToken('g', 'tok2'), withToken('g', 'tok2')];
+    expect(countAttacksSince(messages, { actorId: 'g', tokenId: 'tok1', since: 1000 })).toBe(1);
+  });
+
+  it('falls back to the actor id when the message has no token', () => {
+    const messages = [msg('a', 2000), withToken('a', undefined), msg('b', 2000)];
+    expect(countAttacksSince(messages, { actorId: 'a', tokenId: 'tok1', since: 1000 })).toBe(2);
+  });
+
+  it('falls back to the actor id when the panel has no token id', () => {
+    expect(countAttacksSince([withToken('a', 'tok9')], { actorId: 'a', since: 1000 })).toBe(1);
+  });
+});
+
 describe('countAttacksSince clocks', () => {
   it("uses the server's created time over the client timestamp", () => {
     const m = { ...msg('a', 500), _stats: { createdTime: 2000 } };
