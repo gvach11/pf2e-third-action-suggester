@@ -128,6 +128,11 @@ const refreshIfCurrent = debounce(() => {
 Hooks.on('updateToken', (_token, changed) => {
   if (isRelevantTokenChange(changed)) refreshIfCurrent();
 });
+// updateToken fires as a move starts, while a player's vision is still
+// catching up with the animation, so a refresh then can read `visible` from
+// midway. sightRefresh fires after each vision update, including when the
+// move ends; the trailing debounce makes the last refresh land after that.
+Hooks.on('sightRefresh', () => refreshIfCurrent());
 Hooks.on('createToken', () => refreshIfCurrent());
 Hooks.on('deleteToken', () => refreshIfCurrent());
 for (const hook of ['createItem', 'updateItem', 'deleteItem']) {
