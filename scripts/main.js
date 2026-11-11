@@ -304,7 +304,9 @@ class ThirdActionPanel extends foundry.applications.api.HandlebarsApplicationMix
       ThirdActionPanel._saveState({ expanded: this._expanded });
     });
 
-    this.element.querySelectorAll('.third-action-roll-btn').forEach(btn => {
+    // Only real roll buttons carry a slug. The variant picker's <summary>
+    // shares the class for its look and must just open the picker.
+    this.element.querySelectorAll('button.third-action-roll-btn[data-slug]').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         this._rollAction(btn.dataset.slug, btn.dataset.needsTarget === 'true', {}, Number(btn.dataset.map) || 0);

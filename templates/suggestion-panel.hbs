@@ -39,7 +39,9 @@
             <span class="action-diamonds">{{this.diamonds}}</span>
 
             {{#if this.variants}}
-              {{!-- Variant sub-menu for Create a Diversion --}}
+              {{!-- Variant sub-menu for Create a Diversion. The summary has the
+                   roll-button class for its look only: no data-slug, so no
+                   roll listener (main.js binds button[data-slug]). --}}
               <details class="third-action-variant-picker">
                 <summary class="third-action-roll-btn" title="Choose variant for {{this.name}}">
                   <i class="fas fa-dice-d20"></i>
